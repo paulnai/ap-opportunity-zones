@@ -231,12 +231,12 @@ with st.sidebar:
     allow_three = False
     scope = "one"
     if section == "Infrastructure pillars":
-        pick = st.radio("Pillar on the map", PK + ["all"],
-                        format_func=lambda k: "🧩  All four pillars" if k == "all"
-                        else f"{PILLARS[k]['icon']}  {PILLARS[k]['name']}",
-                        help="One pillar at a time, or all four pillars read together. Each mandal's result on "
-                             "all four pillars is always in its profile.")
-        scope, layer = ("all", "con") if pick == "all" else ("one", pick)
+        pick = st.selectbox("Pillar on the map", PK, index=None, placeholder="Select a pillar",
+                            format_func=lambda k: f"{PILLARS[k]['icon']}  {PILLARS[k]['name']}",
+                            help="Leave blank to see all four pillars together (the opening map). Pick one pillar "
+                                 "to see it on its own. Select a mandal to see it on all four pillars side by side.")
+        # Blank = the four pillars read together; "con" is only a placeholder layer for that view
+        scope, layer = ("all", "con") if pick is None else ("one", pick)
         view = "team"
     else:
         layer = st.selectbox("Business area", list(BUSINESSES), format_func=lambda k: BUSINESSES[k]["name"])
@@ -264,12 +264,13 @@ with st.sidebar:
         "dlevel": ("Level within the district", "Compared with mandals in the same district"),
         "score": ("Score (shading)", "Finer detail than three levels"),
         "measure": ("A single measure", "One input to the score, e.g. canal coverage"),
+        "best": ("Strongest pillar", "The pillar each mandal scores highest on"),
         "nhigh": ("Number of pillars at High (0–4)", "Overall infrastructure strength"),
         "weak": ("Weakest pillar (bottleneck)", "What is holding each mandal back"),
         "cover": ("Data coverage (0–4 pillars with data)", "Where data is missing"),
     }
     one = ["level", "score", "dlevel"] + (["measure"] if view == "team" and layer != "ele" and LAYERS[layer]["measures"] else [])
-    avail = one if scope == "one" else ["nhigh", "weak", "cover"]
+    avail = one if scope == "one" else ["best", "nhigh", "weak", "cover"]
     colour_by = st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0],
                          captions=[MODES[m][1] for m in avail])
     measure_pick = None
@@ -330,6 +331,17 @@ def _weakest(r):
 
 
 DF["weak"] = DF.apply(_weakest, axis=1)
+
+
+def _strongest(r):
+    """The pillar a mandal scores highest on, among the pillars where it is High (top third)."""
+    highs = [p for p in PK if r[f"{p}_t3"] == "High"]
+    if not highs:
+        return "No pillar at High" if r["n_data"] > 0 else None
+    return PILLARS[max(highs, key=lambda p: r[f"{p}_pct"])]["name"]
+
+
+DF["best"] = DF.apply(_strongest, axis=1)
 RG = f"{layer}_region" if (view == "team" and scope == "one") else None
 
 df = DF if not districts else DF[DF["district_name"].isin(districts)]
@@ -371,21 +383,34 @@ if view == "draft":
                 + f" (source: {DRAFT[layer]['src']}).</div>", unsafe_allow_html=True)
 
 cnt = scored["cur_lvl"].value_counts()
-cols = st.columns(5)
 if scope == "all":
-    tiles_all = [(f"{len(df):,}", "Mandals", None),
-                 (f"{(df['n_high'] == 4).sum():,}", "High on all 4 pillars", "#0d366b"),
-                 (f"{df['weak'].isin([PILLARS[p]['name'] for p in PK]).sum():,}", "Low on at least 1 pillar", LEVEL_COLOURS["Low"]),
-                 (f"{(df['n_data'] == 4).sum():,}", "Data on all 4 pillars", "#3d3a33"),
-                 (f"{(df['n_data'] < 4).sum():,}", "Missing 1 or more pillars", NO_DATA)]
-tiles = [(f"{len(scored):,}", f"Mandals with data (of {len(df)})", None)] + \
-        [(f"{cnt.get(lv, 0):,}", lv if not (view == "team" and layer == "con") else
-          {"High": "Well connected", "Medium": "Average", "Low": "Poorly connected"}[lv], LEVEL_COLOURS[lv])
-         for lv in ["High", "Medium", "Low"]] + [(f"{len(df) - len(scored):,}", "No data (grey)", NO_DATA)]
-for c, (n, l, colr) in zip(cols, tiles_all if scope == "all" else tiles):
-    sw = f'<span class="sw" style="background:{colr};border:1px solid #cfcdc6"></span>' if colr else ""
-    c.markdown(f'<div class="kpi"><div class="n">{n}</div><div class="l">{sw}{l}</div></div>', unsafe_allow_html=True)
-st.caption("In this view every pillar, Connectivity included, is split into thirds of the mandals with data, so the four are compared like with like." if scope == "all" else META.get("level_rule", "Levels are thirds of the scored mandals: top third High, middle Medium, bottom Low."))
+    # Opening view: one figure per pillar, so no single pillar dominates the header
+    cols = st.columns(5)
+    n_any = int((df["n_data"] > 0).sum())
+    cols[0].markdown(f'<div class="kpi"><div class="n">{len(df):,}</div><div class="l">Mandals in total<br>'
+                     f'<span style="opacity:.75">{n_any:,} analysed on at least 1 pillar · '
+                     f'{int((df["n_data"] == 4).sum()):,} on all 4</span></div></div>', unsafe_allow_html=True)
+    for c, p in zip(cols[1:], PK):
+        n_hi = int((df[f"{p}_t3"] == "High").sum())
+        n_dat = int(df[f"{p}_t3"].notna().sum())
+        sw = f'<span class="sw" style="background:{LEVEL_COLOURS["High"]};border:1px solid #cfcdc6"></span>'
+        c.markdown(f'<div class="kpi"><div class="n">{n_hi:,}</div><div class="l">{sw}{PILLARS[p]["icon"]} '
+                   f'{PILLARS[p]["name"]}: High<br><span style="opacity:.75">of {n_dat:,} mandals with data</span>'
+                   f'</div></div>', unsafe_allow_html=True)
+    st.caption(f"High = top third of mandals with data on that pillar (Connectivity included, so the four compare "
+               f"like with like). {int((df['n_high'] == 4).sum()):,} mandals are High on all four. "
+               f"Pick a pillar in the sidebar for its High / Medium / Low split.")
+else:
+    cols = st.columns(5)
+    tiles = [(f"{len(scored):,}", f"Mandals with data (of {len(df)})", None)] + \
+            [(f"{cnt.get(lv, 0):,}", lv if not (view == "team" and layer == "con") else
+              {"High": "Well connected", "Medium": "Average", "Low": "Poorly connected"}[lv], LEVEL_COLOURS[lv])
+             for lv in ["High", "Medium", "Low"]] + [(f"{len(df) - len(scored):,}", "No data (grey)", NO_DATA)]
+    for c, (n, l, colr) in zip(cols, tiles):
+        sw = f'<span class="sw" style="background:{colr};border:1px solid #cfcdc6"></span>' if colr else ""
+        c.markdown(f'<div class="kpi"><div class="n">{n}</div><div class="l">{sw}{l}</div></div>',
+                   unsafe_allow_html=True)
+    st.caption(META.get("level_rule", "Levels are thirds of the scored mandals: top third High, middle Medium, bottom Low."))
 
 tabs = st.tabs(["🗺️  Map and mandal profile", "⚖️  Compare mandals", "📋  All mandals", "🧭  Regions",
                 "ℹ️  About and limitations"])
@@ -396,13 +421,31 @@ tabs = st.tabs(["🗺️  Map and mandal profile", "⚖️  Compare mandals", "�
 # ════════════════════════════════════════════════════════════════════════════
 @st.cache_data
 def district_label_points():
-    rows = []
-    for f in DISTRICT_GEO["features"]:
-        g = f["geometry"]
-        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
-        ring = np.array(max(polys, key=lambda p: len(p[0]))[0])
-        rows.append((f["properties"]["district_name"], ring[:, 0].mean(), ring[:, 1].mean()))
-    return pd.DataFrame(rows, columns=["district", "lon", "lat"])
+    """District name positions, precomputed inside each district (data/district_labels.csv).
+    Long names are split over two lines so they don't run into neighbouring districts."""
+    lab = pd.read_csv(DATA / "district_labels.csv")
+    short = {"Dr.B.R.Ambedkar Konaseema": "Konaseema", "Sri Potti Sriramulu Nellore": "Nellore",
+             "Alluri Sitharama Raju": "Alluri Sitharama<br>Raju", "Parvathipuram Manyam": "Parvathipuram<br>Manyam"}
+    lab["text"] = lab["district"].map(lambda n: short.get(n, n))
+    return lab
+
+
+@st.cache_data
+def mandal_label_points():
+    return pd.read_csv(DATA / "mandal_labels.csv").set_index("mandal_lgd")
+
+
+# Map text: dark, semi-bold, with a white halo so it stays readable over any colour
+HALO = "1px 1px 2px #fff, -1px -1px 2px #fff, 1px -1px 2px #fff, -1px 1px 2px #fff, 0 0 3px #fff"
+DIST_FONT = dict(size=12, color="#1d1c1a", weight=600, shadow=HALO)
+SEL_FONT = dict(size=13, color="#000", weight=700, shadow=HALO)
+
+
+def mandal_name_trace(lgd, name):
+    """The selected mandal's name, written on the map next to its outline."""
+    pt = mandal_label_points().loc[int(lgd)]
+    return go.Scattergeo(lon=[pt["lab_lon"]], lat=[pt["lab_lat"]], text=[name], mode="text", textfont=SEL_FONT,
+                         textposition="top center", hoverinfo="skip", showlegend=False)
 
 
 def district_lines(sel):
@@ -498,6 +541,12 @@ def build_map(d):
         for n_, c_ in steps.items():
             cat(d[(d["n_high"] == n_) & (d["n_data"] > 0)], c_, f"{n_} of 4 pillars High")
         cat(d[d["n_data"] == 0], NO_DATA, "No data")
+    elif colour_by == "best":
+        BEST = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#1f9e89",
+                "Market access": "#8a5cc4", "No pillar at High": "#ece9e2"}
+        for w_, c_ in BEST.items():
+            cat(d[d["best"] == w_], c_, w_ if w_.startswith("No") else f"Strongest: {w_}")
+        cat(d[d["best"].isna()], NO_DATA, "No data")
     elif colour_by == "weak":
         WEAK = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#eb6834",
                 "Market access": "#8a5cc4", "No bottleneck": "#cde8d6"}
@@ -520,8 +569,8 @@ def build_map(d):
     lab = district_label_points()
     if districts:
         lab = lab[lab["district"].isin(districts)]
-    fig.add_trace(go.Scattergeo(lon=lab["lon"], lat=lab["lat"], text=lab["district"], mode="text",
-                                textfont=dict(size=10, color="#3b3a36"), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scattergeo(lon=lab["lon"], lat=lab["lat"], text=lab["text"], mode="text",
+                                textfont=DIST_FONT, hoverinfo="skip", showlegend=False))
     trace_lgd.append([])
     sel = d[d["mandal_lgd"] == st.session_state.mandal_lgd]
     if not sel.empty:
@@ -530,6 +579,8 @@ def build_map(d):
                                     colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
                                     marker_line_color="#111", marker_line_width=2.2, showscale=False,
                                     hoverinfo="skip", showlegend=False))
+        trace_lgd.append([])
+        fig.add_trace(mandal_name_trace(sel["mandal_lgd"].iloc[0], sel["mandal_name"].iloc[0]))
         trace_lgd.append([])
     fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
     fig.update_layout(height=640, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
@@ -576,7 +627,7 @@ def profile(lgd):
     st.caption(f"High on {n_high}, Low on {n_low}" + (f", no data on {n_nd}" if n_nd else "") + " of 4 pillars.")
 
     if scope == "all":
-        st.caption("Choose **One pillar** in the sidebar to see a pillar's measures for this mandal.")
+        st.caption("Pick a pillar under **Pillar on the map** to see that pillar's measures for this mandal.")
     else:
         st.markdown(f"**{META['name'] if section == 'Business areas' else PILLARS[layer]['name']}: details**")
         if pd.isna(r["cur_score"]):
@@ -603,14 +654,21 @@ def profile(lgd):
             st.markdown('<div class="note">City mandal: village access and bus service assumed 100%; road condition '
                         '(*) is the district median.</div>', unsafe_allow_html=True)
 
-    with st.expander("Business areas for this mandal"):
+    with st.expander("Recommended Business Areas for this Mandal"):
         rows = []
+        order = {"High": 0, "Medium": 1, "Low": 2}
         for b, v in BUSINESSES.items():
             ds = draft_series(b, st.session_state.weights[b], allow_three)
-            rows.append({"Business": v["name"], "Team's score": fmt_score(v["score_kind"], r[f"{b}_score"]),
-                         "Team level": lvl(r[f"{b}_lvl"]),
-                         "Draft opportunity": "no data" if pd.isna(ds.loc[r.name]) else f"{ds.loc[r.name]:.0f}"})
-        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+            lv_ = r[f"{b}_lvl"]
+            rows.append({"Business": ("★ " if lv_ == "High" else "") + v["name"],
+                         "Team level": lvl(lv_),
+                         "Team's score": fmt_score(v["score_kind"], r[f"{b}_score"]),
+                         "Draft opportunity": "no data" if pd.isna(ds.loc[r.name]) else f"{ds.loc[r.name]:.0f}",
+                         "_o": order.get(lv_, 3), "_p": -(r[f"{b}_pct"] if pd.notna(r[f"{b}_pct"]) else -1)})
+        tb = pd.DataFrame(rows).sort_values(["_o", "_p"]).drop(columns=["_o", "_p"])
+        st.dataframe(tb, hide_index=True, use_container_width=True)
+        st.caption("Sorted from the strongest level down. ★ = High (top third of the state) for this mandal. "
+                   "Levels come from each business team's own analysis.")
 
 
 def clicked_lgd(ev, tl):
@@ -628,8 +686,9 @@ def clicked_lgd(ev, tl):
     return lgd
 
 
-def small_map(d, p, dist):
-    """One pillar's levels for the selected mandal's district, in the same colours as the profile cards."""
+def small_map(d, p, dist, legend=False):
+    """One pillar's levels for the selected mandal's district, in the same colours as the profile cards.
+    legend=True draws the one shared legend (used on the top-left map only)."""
     fig, tl = go.Figure(), []
     names = ({"High": "Well connected", "Medium": "Average", "Low": "Poorly connected"} if p == "con"
              else {k: k for k in LEVEL_COLOURS})
@@ -644,8 +703,8 @@ def small_map(d, p, dist):
                for _, r in sub.iterrows()]
         fig.add_trace(go.Choropleth(locations=sub["mandal_lgd"], z=np.ones(len(sub)), text=txt, hoverinfo="text",
                                     geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd",
-                                    colorscale=[[0, colour], [1, colour]], showscale=False, showlegend=True,
-                                    name=nm, marker_line_color="white", marker_line_width=0.6))
+                                    colorscale=[[0, colour], [1, colour]], showscale=False, showlegend=False,
+                                    marker_line_color="white", marker_line_width=0.6))
         tl.append(sub["mandal_lgd"].tolist())
     lons, lats = district_lines([dist])
     fig.add_trace(go.Scattergeo(lon=lons, lat=lats, mode="lines", line=dict(color="#6b6862", width=0.8),
@@ -659,12 +718,25 @@ def small_map(d, p, dist):
                                     marker_line_color="#111", marker_line_width=3, showscale=False,
                                     hoverinfo="skip", showlegend=False))
         tl.append([])
-    # Same legend box as the state map, kept in a strip on the left so it never covers a mandal
+        fig.add_trace(mandal_name_trace(sel["mandal_lgd"].iloc[0], sel["mandal_name"].iloc[0]))
+        tl.append([])
+    if legend:
+        # One legend for all four maps: every level always listed, whatever this district contains
+        for lab, colour in [("High / Well connected", LEVEL_COLOURS["High"]),
+                            ("Medium / Average", LEVEL_COLOURS["Medium"]),
+                            ("Low / Poorly connected", LEVEL_COLOURS["Low"]), ("No data", NO_DATA)]:
+            fig.add_trace(go.Scattergeo(lon=[None], lat=[None], mode="markers", name=lab, showlegend=True,
+                                        hoverinfo="skip", marker=dict(symbol="square", size=11, color=colour,
+                                                                      line=dict(color="#cfcdc6", width=1))))
+            tl.append([])
+    # The legend sits in a strip on the left of the top-left map so it never covers a mandal
     fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)",
-                    domain=dict(x=[0.3, 1], y=[0, 1]))
+                    domain=dict(x=[0.34, 1] if legend else [0, 1], y=[0, 1]))
     fig.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+                      showlegend=legend,
                       legend=dict(x=0, y=0.02, xanchor="left", yanchor="bottom", bgcolor="rgba(255,255,255,0.9)",
-                                  bordercolor="#e3e1da", borderwidth=1, font=dict(size=11)),
+                                  bordercolor="#e3e1da", borderwidth=1, font=dict(size=11),
+                                  itemclick=False, itemdoubleclick=False),
                       hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"))
     return fig, tl
 
@@ -682,8 +754,18 @@ with tabs[0]:
             if h2.button("↩ Back to the state map", use_container_width=True):
                 select_mandal(None)
             dd = DF[DF["district_name"] == dist]
+            # One legend for all four maps, in the top-left corner, beside the grid so the maps stay equal in size
+            lcol, gcol = st.columns([0.24, 1], gap="small")
+            items = "".join(
+                f'<div style="margin:3px 0"><span class="sw" style="background:{c};border:1px solid #cfcdc6"></span>{n}</div>'
+                for n, c in [("High", LEVEL_COLOURS["High"]), ("Medium", LEVEL_COLOURS["Medium"]),
+                             ("Low", LEVEL_COLOURS["Low"]), ("No data", NO_DATA)])
+            lcol.markdown('<div style="margin-top:2.2rem;padding:6px 8px;background:#fff;border:1px solid #e3e1da;'
+                          f'font-size:12px;line-height:1.3">{items}<div style="margin-top:6px;color:#6b6862;'
+                          'font-size:11px">Connectivity: High = Well connected, Medium = Average, Low = Poorly '
+                          'connected</div></div>', unsafe_allow_html=True)
             for row in (PK[:2], PK[2:]):
-                cols_ = st.columns(2)
+                cols_ = gcol.columns(2)
                 for c_, p in zip(cols_, row):
                     with c_:
                         st.markdown(f"**{PILLARS[p]['icon']} {PILLARS[p]['name']}**")
@@ -693,7 +775,8 @@ with tabs[0]:
                         lg = clicked_lgd(ev_, tl_)
                         if lg is not None and int(lg) != sel_lgd:
                             select_mandal(lg)
-            st.caption(f"Each small map is one pillar for {dist} district, in the same colours as the profile cards. "
+            st.caption(f"Each small map is one pillar for {dist} district, in the same colours as the profile cards "
+                       "(one legend, top left, for all four). "
                        f"{r0['mandal_name']} is outlined in black. Click another mandal to switch to it.")
         else:
             fig, trace_lgd = build_map(df)
@@ -704,6 +787,9 @@ with tabs[0]:
                 select_mandal(lg)
             MODE_NOTE = {
                 "dlevel": "Each mandal compared only with mandals in its own district (top, middle, bottom third).",
+                "best": "Each mandal is coloured by the pillar it scores highest on, among the pillars where it is in the "
+                        "state's top third (High). Pale = High on no pillar. Many mandals are High on more than one "
+                        "pillar; the map shows only the strongest one, and the profile shows all four.",
                 "nhigh": "How many of the four pillars each mandal is High on (top third). Mandals missing a pillar can't reach 4.",
                 "weak": "The pillar each mandal does worst on, among pillars in the bottom third. Light green = no bottleneck. Only pillars with data are compared.",
                 "cover": "How many of the four pillars have data for each mandal. Darker = more complete.",
@@ -812,7 +898,7 @@ with tabs[2]:
 # ════════════════════════════════════════════════════════════════════════════
 with tabs[3]:
     if not RG:
-        st.info("Regions belong to one pillar or one business area's own analysis. Choose **One pillar**, or a "
+        st.info("Regions belong to one pillar or one business area's own analysis. Pick a pillar under **Pillar on the map**, or a "
                 "business area's **Team's analysis**, to see them.")
     else:
         st.markdown(f"#### {LAYERS[layer]['name']}: regions from the team's analysis")

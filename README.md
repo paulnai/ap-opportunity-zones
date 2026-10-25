@@ -12,19 +12,23 @@ Built around the professor's review on 24 October 2026:
 - **Each mandal's performance across all four pillars**, side by side in its profile, in the compare view and
   in the "All mandals" table.
 
-**Pillar on the map.** Connectivity, Electricity, Water, Market access, or **All four pillars**.
-- One pillar: colour by Level (High / Medium / Low), Score (shading), Level within the district, or A single
-  measure (not for Electricity, whose file has no raw measures).
-- All four pillars: colour by Number of pillars at High (0–4), Weakest pillar (bottleneck), or Data coverage
-  (0–4). In these views every pillar, Connectivity included, is split into thirds so the four are compared like
-  with like.
+**Opening view.** *Pillar on the map* starts blank, and the state map shows the four pillars read together:
+each mandal is coloured by its **strongest pillar** (Water blue, Electricity amber, Connectivity teal, Market
+access purple), among the pillars where it is in the state's top third; pale = High on no pillar. The figures at
+the top give the total number of mandals, then for each pillar the number at High out of those with data.
+*Colour the map by* can also show Number of pillars at High (0–4), Weakest pillar or Data coverage.
 
-**Selecting a mandal.** The dashboard opens on the state map with no mandal selected. Click a mandal on the map
-(or type its name in *Find a mandal*) and, in the Infrastructure pillars section, the map area switches to **four
-small maps, one per pillar**, zoomed to that mandal's district with the mandal outlined in black. Click another
-mandal on any small map to switch to it, or **Back to the state map** to return. The profile cards on the right
-give the exact scores and ranks. Each small map carries the same legend as the state map, and the sidebar's
-*Districts* box fills in with the mandal's district; **Back to the state map** restores what the box held before.
+**Pillar on the map.** Pick Connectivity, Electricity, Water or Market access from the drop-down to see one
+pillar on its own; clear it to return to the opening view. Colour by Level (High / Medium / Low), Score
+(shading), Level within the district, or A single measure (not for Electricity, whose file has no raw measures).
+
+**Selecting a mandal.** Click a mandal on the map (or type its name in *Find a mandal*) and, in the
+Infrastructure pillars section, the map area switches to **four small maps, one per pillar**, zoomed to that
+mandal's district with the mandal outlined in black. One legend, top left, covers all four maps. Click another
+mandal on any small map to switch to it, or **Back to the state map** to return. The sidebar's *Districts* box
+fills in with the mandal's district; **Back to the state map** restores what the box held before. The profile
+cards on the right give the exact scores and ranks, and **Recommended Business Areas for this Mandal** lists the
+four business areas from the strongest level down (★ = High).
 
 **Levels.** Connectivity keeps the levels from its report (Well connected, Average, Poorly connected). The other
 pillars split their scored mandals into thirds: High is the top third of mandals with data.
