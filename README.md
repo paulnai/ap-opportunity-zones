@@ -5,6 +5,14 @@ An interactive dashboard for exploring the results of **Problem Statement 2: Ent
 
 ## What's in it
 
+**Opening page: Andhra Pradesh Overview.** When the dashboard loads, no *Section* is selected and the page shows
+"Infrastructure & Business Opportunity Overview": two maps side by side. Left: each mandal's strongest
+infrastructure pillar. Right: each mandal's strongest business area (team opportunity scores). Each map has its
+legend top-left and its caption inside the frame, bottom-right. Pick *Infrastructure pillars* or *Business areas*
+in the sidebar to explore one in depth; "↩ Back to the Andhra Pradesh overview" in the sidebar returns here.
+The two sections open on "Andhra Pradesh Infrastructure Overview" and "Andhra Pradesh Business Opportunity
+Overview".
+
 Built around the professor's review on 24 October 2026:
 
 - **One infrastructure pillar on the map at a time** (Water, Electricity, Connectivity, Market access), in three

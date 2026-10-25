@@ -204,6 +204,9 @@ st.markdown("""
   table.st {width:100%; border-collapse:collapse; font-size:14px;}
   table.st th {text-align:left; color:#55534d; font-weight:600; border-bottom:1px solid #d6d3cb; padding:4px 6px;}
   table.st td {border-bottom:1px solid #eeece6; padding:5px 6px; vertical-align:middle;}
+  .chips {display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:.2rem 0 .4rem 0;}
+  .chip {border:1px solid #e3e1da; border-radius:14px; padding:3px 10px; background:#fff; font-size:14px; white-space:nowrap;}
+  .mapcap {text-align:center; font-size:16px; color:#22211f; margin-top:-1.6rem; position:relative;}
 </style>""", unsafe_allow_html=True)
 
 
@@ -270,10 +273,15 @@ def fmt_measure(kind, v, star=False):
 # ════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("### Opportunity Zones Explorer")
-    st.caption("Problem Statement 2 · SERP × ISB capstone")
-    section = st.radio("Section", ["Infrastructure pillars", "Business areas"],
+    # Nothing picked = the opening overview (both maps side by side). A button brings it back.
+    section = st.radio("Section", ["Infrastructure pillars", "Business areas"], index=None, key="section_radio",
                        captions=["Water, Electricity, Connectivity, Market access",
                                  "Agriculture, Livestock, Rural Services, Aquaculture"])
+    if section is None:
+        section = "Overview"
+    else:
+        st.button("↩ Back to the Andhra Pradesh overview", use_container_width=True,
+                  on_click=lambda: st.session_state.update(section_radio=None, mandal_lgd=None))
     scope = "one"
     if section == "Infrastructure pillars":
         pick = st.selectbox("Pillar on the map", PK, index=None, placeholder="Select a pillar",
@@ -283,6 +291,8 @@ with st.sidebar:
         # Blank = the four pillars read together; "con" is only a placeholder layer for that view
         scope, layer = ("all", "con") if pick is None else ("one", pick)
         view = "team"
+    elif section == "Overview":
+        scope, layer, view = "all", "con", "team"
     else:
         pickb = st.selectbox("Business area", list(BUSINESSES), index=None, placeholder="Select a business area",
                              format_func=lambda k: f"{BUSINESSES[k]['icon']}  {BUSINESSES[k]['name']}",
@@ -305,8 +315,8 @@ with st.sidebar:
     one = ["level", "score", "dlevel"] + (["measure"] if view == "team" and layer != "ele" and LAYERS[layer]["measures"] else [])
     avail = one if scope == "one" else (["best", "nhigh", "weak", "cover"] if section == "Infrastructure pillars"
                                         else ["bbest", "bnhigh"])
-    colour_by = st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0],
-                         captions=[MODES[m][1] for m in avail])
+    colour_by = "level" if section == "Overview" else \
+        st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0], captions=[MODES[m][1] for m in avail])
     measure_pick = None
     if colour_by == "measure":
         ms = LAYERS[layer]["measures"]
@@ -407,71 +417,73 @@ def select_mandal(lgd):
     st.session_state.map_ver += 1
     st.rerun()
 
-# ════════════════════════════════════════════════════════════════════════════
-# 4. HEADER
-# ════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="eyebrow">Entrepreneurial Opportunity Zones · Andhra Pradesh · mandal level</div>',
-            unsafe_allow_html=True)
-BIZ = section == "Business areas"
-if BIZ:
-    title = ("All four business areas together" if scope == "all"
-             else f"{BUSINESSES[layer]['icon']} {BUSINESSES[layer]['name']} — opportunity score")
-    sub = ("Agriculture, Livestock, Rural Services and Aquaculture read together, using each team's opportunity score."
-           if scope == "all" else META["score_help"])
-else:
-    title = ("All four pillars together" if scope == "all" else
-             f"{PILLARS[layer]['icon']} {PILLARS[layer]['name']} — {PILLARS[layer]['question']}")
-    sub = ("Water, Electricity, Connectivity and Market access read together for each mandal."
-           if scope == "all" else META["score_help"])
-st.markdown(f"## {title}")
-st.caption(f"{', '.join(districts) if districts else 'All of Andhra Pradesh'} · {sub}")
 
-cnt = scored["cur_lvl"].value_counts()
-if scope == "all" and BIZ:
-    cols = st.columns(5)
-    cols[0].markdown(f'<div class="kpi"><div class="n">{len(df):,}</div><div class="l">Mandals in total<br>'
-                     f'<span style="opacity:.75">{int((df["b_data"] > 0).sum()):,} in the teams\' opportunity '
-                     f'models</span></div></div>', unsafe_allow_html=True)
-    for c, b in zip(cols[1:], BK):
-        n_hi = int((df[f"{b}_t3"] == "High").sum())
-        n_dat = int(df[f"{b}_t3"].notna().sum())
-        sw = f'<span class="sw" style="background:{LEVEL_COLOURS["High"]};border:1px solid #cfcdc6"></span>'
-        c.markdown(f'<div class="kpi"><div class="n">{n_hi:,}</div><div class="l">{sw}{BUSINESSES[b]["icon"]} '
-                   f'{BUSINESSES[b]["name"]}: High<br><span style="opacity:.75">of {n_dat:,} mandals scored</span>'
-                   f'</div></div>', unsafe_allow_html=True)
-    st.caption(f"High = top third of the mandals each team scored. {int((df['b_high'] == 4).sum()):,} mandals are "
-               "High on all four. Pick a business area in the sidebar for its High / Medium / Low split.")
-elif scope == "all":
-    # Opening view: one figure per pillar, so no single pillar dominates the header
-    cols = st.columns(5)
-    n_any = int((df["n_data"] > 0).sum())
-    cols[0].markdown(f'<div class="kpi"><div class="n">{len(df):,}</div><div class="l">Mandals in total<br>'
-                     f'<span style="opacity:.75">{n_any:,} analysed on at least 1 pillar · '
-                     f'{int((df["n_data"] == 4).sum()):,} on all 4</span></div></div>', unsafe_allow_html=True)
-    for c, p in zip(cols[1:], PK):
-        n_hi = int((df[f"{p}_t3"] == "High").sum())
-        n_dat = int(df[f"{p}_t3"].notna().sum())
-        sw = f'<span class="sw" style="background:{LEVEL_COLOURS["High"]};border:1px solid #cfcdc6"></span>'
-        c.markdown(f'<div class="kpi"><div class="n">{n_hi:,}</div><div class="l">{sw}{PILLARS[p]["icon"]} '
-                   f'{PILLARS[p]["name"]}: High<br><span style="opacity:.75">of {n_dat:,} mandals with data</span>'
-                   f'</div></div>', unsafe_allow_html=True)
-    st.caption(f"High = top third of mandals with data on that pillar (Connectivity included, so the four compare "
-               f"like with like). {int((df['n_high'] == 4).sum()):,} mandals are High on all four. "
-               f"Pick a pillar in the sidebar for its High / Medium / Low split.")
-else:
-    cols = st.columns(5)
-    tiles = [(f"{len(scored):,}", f"Mandals with data (of {len(df)})", None)] + \
-            [(f"{cnt.get(lv, 0):,}", lv if not (view == "team" and layer == "con") else
-              {"High": "Well connected", "Medium": "Average", "Low": "Poorly connected"}[lv], LEVEL_COLOURS[lv])
-             for lv in ["High", "Medium", "Low"]] + [(f"{len(df) - len(scored):,}", "No data (grey)", NO_DATA)]
-    for c, (n, l, colr) in zip(cols, tiles):
-        sw = f'<span class="sw" style="background:{colr};border:1px solid #cfcdc6"></span>' if colr else ""
-        c.markdown(f'<div class="kpi"><div class="n">{n}</div><div class="l">{sw}{l}</div></div>',
-                   unsafe_allow_html=True)
-    st.caption(META.get("level_rule", "Levels are thirds of the scored mandals: top third High, middle Medium, bottom Low."))
+if section != "Overview":
+    # ════════════════════════════════════════════════════════════════════════════
+    # 4. HEADER
+    # ════════════════════════════════════════════════════════════════════════════
+    st.markdown('<div class="eyebrow">Entrepreneurial Opportunity Zones · Andhra Pradesh · mandal level</div>',
+                unsafe_allow_html=True)
+    BIZ = section == "Business areas"
+    if BIZ:
+        title = ("Andhra Pradesh Business Opportunity Overview" if scope == "all"
+                 else f"{BUSINESSES[layer]['icon']} {BUSINESSES[layer]['name']} — opportunity score")
+        sub = ("Agriculture, Livestock, Rural Services and Aquaculture read together, using each team's opportunity score."
+               if scope == "all" else META["score_help"])
+    else:
+        title = ("Andhra Pradesh Infrastructure Overview" if scope == "all" else
+                 f"{PILLARS[layer]['icon']} {PILLARS[layer]['name']} — {PILLARS[layer]['question']}")
+        sub = ("Water, Electricity, Connectivity and Market access read together for each mandal."
+               if scope == "all" else META["score_help"])
+    st.markdown(f"## {title}")
+    st.caption(f"{', '.join(districts) if districts else 'All of Andhra Pradesh'} · {sub}")
 
-tabs = st.tabs(["🗺️  Map and mandal profile", "⚖️  Compare mandals", "📋  All mandals", "🧭  Regions",
-                "ℹ️  About and limitations"])
+    cnt = scored["cur_lvl"].value_counts()
+    if scope == "all" and BIZ:
+        cols = st.columns(5)
+        cols[0].markdown(f'<div class="kpi"><div class="n">{len(df):,}</div><div class="l">Mandals in total<br>'
+                         f'<span style="opacity:.75">{int((df["b_data"] > 0).sum()):,} in the teams\' opportunity '
+                         f'models</span></div></div>', unsafe_allow_html=True)
+        for c, b in zip(cols[1:], BK):
+            n_hi = int((df[f"{b}_t3"] == "High").sum())
+            n_dat = int(df[f"{b}_t3"].notna().sum())
+            sw = f'<span class="sw" style="background:{LEVEL_COLOURS["High"]};border:1px solid #cfcdc6"></span>'
+            c.markdown(f'<div class="kpi"><div class="n">{n_hi:,}</div><div class="l">{sw}{BUSINESSES[b]["icon"]} '
+                       f'{BUSINESSES[b]["name"]}: High<br><span style="opacity:.75">of {n_dat:,} mandals scored</span>'
+                       f'</div></div>', unsafe_allow_html=True)
+        st.caption(f"High = top third of the mandals each team scored. {int((df['b_high'] == 4).sum()):,} mandals are "
+                   "High on all four. Pick a business area in the sidebar for its High / Medium / Low split.")
+    elif scope == "all":
+        # Opening view: one figure per pillar, so no single pillar dominates the header
+        cols = st.columns(5)
+        n_any = int((df["n_data"] > 0).sum())
+        cols[0].markdown(f'<div class="kpi"><div class="n">{len(df):,}</div><div class="l">Mandals in total<br>'
+                         f'<span style="opacity:.75">{n_any:,} analysed on at least 1 pillar · '
+                         f'{int((df["n_data"] == 4).sum()):,} on all 4</span></div></div>', unsafe_allow_html=True)
+        for c, p in zip(cols[1:], PK):
+            n_hi = int((df[f"{p}_t3"] == "High").sum())
+            n_dat = int(df[f"{p}_t3"].notna().sum())
+            sw = f'<span class="sw" style="background:{LEVEL_COLOURS["High"]};border:1px solid #cfcdc6"></span>'
+            c.markdown(f'<div class="kpi"><div class="n">{n_hi:,}</div><div class="l">{sw}{PILLARS[p]["icon"]} '
+                       f'{PILLARS[p]["name"]}: High<br><span style="opacity:.75">of {n_dat:,} mandals with data</span>'
+                       f'</div></div>', unsafe_allow_html=True)
+        st.caption(f"High = top third of mandals with data on that pillar (Connectivity included, so the four compare "
+                   f"like with like). {int((df['n_high'] == 4).sum()):,} mandals are High on all four. "
+                   f"Pick a pillar in the sidebar for its High / Medium / Low split.")
+    else:
+        cols = st.columns(5)
+        tiles = [(f"{len(scored):,}", f"Mandals with data (of {len(df)})", None)] + \
+                [(f"{cnt.get(lv, 0):,}", lv if not (view == "team" and layer == "con") else
+                  {"High": "Well connected", "Medium": "Average", "Low": "Poorly connected"}[lv], LEVEL_COLOURS[lv])
+                 for lv in ["High", "Medium", "Low"]] + [(f"{len(df) - len(scored):,}", "No data (grey)", NO_DATA)]
+        for c, (n, l, colr) in zip(cols, tiles):
+            sw = f'<span class="sw" style="background:{colr};border:1px solid #cfcdc6"></span>' if colr else ""
+            c.markdown(f'<div class="kpi"><div class="n">{n}</div><div class="l">{sw}{l}</div></div>',
+                       unsafe_allow_html=True)
+        st.caption(META.get("level_rule", "Levels are thirds of the scored mandals: top third High, middle Medium, bottom Low."))
+
+    tabs = st.tabs(["🗺️  Map and mandal profile", "⚖️  Compare mandals", "📋  All mandals", "🧭  Regions",
+                    "ℹ️  About and limitations"])
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -680,6 +692,90 @@ def build_map(d):
 MAP_CONFIG = {"displayModeBar": False, "scrollZoom": False}
 if st.get_option("server.enableStaticServing"):
     MAP_CONFIG["topojsonURL"] = "app/static/"
+
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# OPENING OVERVIEW: infrastructure and business opportunity side by side
+# ════════════════════════════════════════════════════════════════════════════
+def overview_fig(groups, hover_txt, caption, height=440):
+    fig = go.Figure()
+    for sub, colour, name in groups:
+        if sub.empty:
+            continue
+        fig.add_trace(go.Choropleth(locations=sub["mandal_lgd"], z=np.ones(len(sub)), text=hover_txt(sub),
+                                    hoverinfo="text", geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd",
+                                    colorscale=[[0, colour], [1, colour]], showscale=False, name=name, showlegend=True,
+                                    marker_line_color="white", marker_line_width=0.35))
+    lons, lats = district_lines(districts)
+    fig.add_trace(go.Scattergeo(lon=lons, lat=lats, mode="lines", line=dict(color="#4a4843", width=0.8),
+                                hoverinfo="skip", showlegend=False))
+    lab = district_label_points()
+    if districts:
+        lab = lab[lab["district"].isin(districts)]
+    fig.add_trace(go.Scattergeo(lon=lab["lon"], lat=lab["lat"], text=lab["text"], mode="text",
+                                textfont=dict(DIST_FONT, size=10), hoverinfo="skip", showlegend=False))
+    fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+                      legend=dict(x=0.01, y=0.99, xanchor="left", yanchor="top", bgcolor="rgba(255,255,255,0.9)",
+                                  bordercolor="#e3e1da", borderwidth=1, font=dict(size=12)),
+                      hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"),
+                      # The caption sits inside the map's frame, in the empty bottom-right corner next to the coast
+                      annotations=[dict(text=caption, x=0.99, y=0.03, xref="paper", yref="paper", xanchor="right",
+                                        yanchor="bottom", showarrow=False, align="right",
+                                        font=dict(size=15, color="#22211f"))])
+    return fig
+
+
+def _hov_infra(d):
+    return [f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>Strongest pillar: <b>{lvl(r['best'])}</b><br>"
+            + "<br>".join(f"{PILLARS[p]['name']}: {lvl(r[f'{p}_t3'])}" for p in PK) for _, r in d.iterrows()]
+
+
+def _hov_biz(d):
+    return [f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>"
+            + (f"Strongest business: <b>{r['bbest']}</b><br>" + "<br>".join(
+               f"{BUSINESSES[b]['name']}: {lvl(r[f'{b}_t3'])}" for b in BK) if r["b_data"] > 0
+               else "<i>Not in the teams' opportunity models</i>") for _, r in d.iterrows()]
+
+
+if section == "Overview":
+    st.markdown('<div class="eyebrow">Entrepreneurial Opportunity Zones · Andhra Pradesh · mandal level</div>',
+                unsafe_allow_html=True)
+    st.markdown("## Andhra Pradesh Overview")
+    st.markdown("#### Infrastructure & Business Opportunity Overview")
+    st.caption(f"{', '.join(districts) if districts else 'All of Andhra Pradesh'} · Left: each mandal's strongest "
+               "infrastructure pillar. Right: each mandal's strongest business opportunity. Hover a mandal on either "
+               "map; pick a Section in the sidebar to explore one in depth.")
+    L, R = st.columns(2, gap="large")
+    with L:
+        chips = "".join(f'<span class="chip"><b>{int((df[f"{p}_t3"] == "High").sum())}</b> {PILLARS[p]["icon"]} '
+                        f'{PILLARS[p]["name"]}</span>' for p in PK)
+        st.markdown(f'<div class="chips"><span class="chip"><b>{len(df):,}</b> mandals</span>{chips}'
+                    '<span class="sm">at High</span></div>', unsafe_allow_html=True)
+        BP = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#1f9e89", "Market access": "#8a5cc4",
+              "No pillar at High": "#ece9e2"}
+        g = [(df[df["best"] == w], c, w if w.startswith("No") else f"Strongest: {w}") for w, c in BP.items()] + \
+            [(df[df["best"].isna()], NO_DATA, "No data")]
+        st.plotly_chart(overview_fig(g, _hov_infra, "🏗️ <b>Infrastructure Overview</b><br>strongest pillar"),
+                        use_container_width=True, config=MAP_CONFIG, key="ov_infra")
+    with R:
+        chips = "".join(f'<span class="chip"><b>{int((df[f"{b}_t3"] == "High").sum())}</b> {BUSINESSES[b]["icon"]} '
+                        f'{BUSINESSES[b]["name"]}</span>' for b in BK)
+        st.markdown(f'<div class="chips"><span class="chip"><b>{int((df["b_data"] > 0).sum()):,}</b> scored</span>'
+                    f'{chips}<span class="sm">at High</span></div>', unsafe_allow_html=True)
+        BB = {"Agriculture": "#3f8f29", "Livestock": "#9a5b1e", "Rural Services": "#c2477a", "Aquaculture": "#1f9ec4",
+              "No business at High": "#c9c2ae"}
+        g = [(df[df["bbest"] == w], c, w if w.startswith("No") else f"Strongest: {w}") for w, c in BB.items()] + \
+            [(df[df["bbest"].isna()], NO_DATA, "Not in the teams' models")]
+        st.plotly_chart(overview_fig(g, _hov_biz, "💼 <b>Business Opportunity Overview</b><br>strongest business area"),
+                        use_container_width=True, config=MAP_CONFIG, key="ov_biz")
+    st.caption("Strongest = the pillar (or business) where the mandal is in the top third and scores highest. "
+               "Grey = no data, never a low score. The business map covers the 323 mandals in the teams' opportunity "
+               "models (all four pillars needed), so the south is grey there.")
+    st.stop()
+
+
 
 
 def pillar_card(r, p, selected):
