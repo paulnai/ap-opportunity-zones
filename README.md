@@ -12,17 +12,18 @@ Built around the professor's review on 24 October 2026:
 - **Each mandal's performance across all four pillars**, side by side in its profile, in the compare view and
   in the "All mandals" table.
 
-**Pillar on the map.** Connectivity, Electricity, Water or Market access.
-
-**Colour the map by.**
-- For the chosen pillar: Level (High / Medium / Low), Score (shading), Level within the district, or A single
+**Pillar on the map.** Connectivity, Electricity, Water, Market access, or **All four pillars**.
+- One pillar: colour by Level (High / Medium / Low), Score (shading), Level within the district, or A single
   measure (not for Electricity, whose file has no raw measures).
-- All four pillars: number at High (0–4), or data coverage (0–4). These read all four pillars together, so the
-  pillar picked above does not change the map. Every pillar, Connectivity included, is split into thirds here.
+- All four pillars: colour by Number of pillars at High (0–4), Weakest pillar (bottleneck), or Data coverage
+  (0–4). In these views every pillar, Connectivity included, is split into thirds so the four are compared like
+  with like.
 
-**Weakest pillar.** Each mandal's weakest pillar (lowest percentile among its pillars in the bottom third) is shown
-in its profile, in the hover of the all-pillar views, and as a column and filter in the All mandals table. It is not
-a map colour, to keep every map to three colours or one shaded colour.
+**Selecting a mandal.** The dashboard opens on the state map with no mandal selected. Click a mandal on the map
+(or type its name in *Find a mandal*) and, in the Infrastructure pillars section, the map area switches to **four
+small maps, one per pillar**, zoomed to that mandal's district with the mandal outlined in black. Click another
+mandal on any small map to switch to it, or **Back to the state map** to return. The profile cards on the right
+give the exact scores and ranks.
 
 **Levels.** Connectivity keeps the levels from its report (Well connected, Average, Poorly connected). The other
 pillars split their scored mandals into thirds: High is the top third of mandals with data.

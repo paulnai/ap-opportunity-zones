@@ -231,9 +231,12 @@ with st.sidebar:
     allow_three = False
     scope = "one"
     if section == "Infrastructure pillars":
-        layer = st.radio("Pillar on the map", PK,
-                         format_func=lambda k: f"{PILLARS[k]['icon']}  {PILLARS[k]['name']}",
-                         help="One pillar at a time. Each mandal's result on all four pillars is always in its profile.")
+        pick = st.radio("Pillar on the map", PK + ["all"],
+                        format_func=lambda k: "🧩  All four pillars" if k == "all"
+                        else f"{PILLARS[k]['icon']}  {PILLARS[k]['name']}",
+                        help="One pillar at a time, or all four pillars read together. Each mandal's result on "
+                             "all four pillars is always in its profile.")
+        scope, layer = ("all", "con") if pick == "all" else ("one", pick)
         view = "team"
     else:
         layer = st.selectbox("Business area", list(BUSINESSES), format_func=lambda k: BUSINESSES[k]["name"])
@@ -261,16 +264,14 @@ with st.sidebar:
         "dlevel": ("Level within the district", "Compared with mandals in the same district"),
         "score": ("Score (shading)", "Finer detail than three levels"),
         "measure": ("A single measure", "One input to the score, e.g. canal coverage"),
-        "nhigh": ("All four pillars: number at High (0–4)", "Overall infrastructure strength"),
-        "cover": ("All four pillars: data coverage (0–4)", "Where data is missing"),
+        "nhigh": ("Number of pillars at High (0–4)", "Overall infrastructure strength"),
+        "weak": ("Weakest pillar (bottleneck)", "What is holding each mandal back"),
+        "cover": ("Data coverage (0–4 pillars with data)", "Where data is missing"),
     }
     one = ["level", "score", "dlevel"] + (["measure"] if view == "team" and layer != "ele" and LAYERS[layer]["measures"] else [])
-    avail = one + (["nhigh", "cover"] if section == "Infrastructure pillars" else [])
+    avail = one if scope == "one" else ["nhigh", "weak", "cover"]
     colour_by = st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0],
                          captions=[MODES[m][1] for m in avail])
-    scope = "all" if colour_by in ("nhigh", "cover") else "one"
-    if scope == "all":
-        st.caption("This option uses **all four pillars**, so the pillar picked above does not change the map.")
     measure_pick = None
     if colour_by == "measure":
         ms = LAYERS[layer]["measures"]
@@ -317,11 +318,20 @@ RG = f"{layer}_region" if (view == "team" and scope == "one") else None
 
 df = DF if not districts else DF[DF["district_name"].isin(districts)]
 scored = df[df["cur_score"].notna()]
+# No mandal is selected at start: the state map shows as before. Selecting a mandal (click or search)
+# switches the map area to that mandal's four-pillar view.
 if "mandal_lgd" not in st.session_state:
-    st.session_state.mandal_lgd = int(DF.loc[DF["agr_score"].idxmax(), "mandal_lgd"])
-if st.session_state.mandal_lgd not in set(df["mandal_lgd"]):
-    pool = scored if not scored.empty else df
-    st.session_state.mandal_lgd = int(pool.sort_values("cur_score", ascending=False).iloc[0]["mandal_lgd"])
+    st.session_state.mandal_lgd = None
+if "map_ver" not in st.session_state:
+    st.session_state.map_ver = 0          # bumping this resets the maps' click state
+if st.session_state.mandal_lgd is not None and st.session_state.mandal_lgd not in set(df["mandal_lgd"]):
+    st.session_state.mandal_lgd = None
+
+
+def select_mandal(lgd):
+    st.session_state.mandal_lgd = None if lgd is None else int(lgd)
+    st.session_state.map_ver += 1
+    st.rerun()
 
 # ════════════════════════════════════════════════════════════════════════════
 # 4. HEADER
@@ -469,6 +479,12 @@ def build_map(d):
         for n_, c_ in steps.items():
             cat(d[(d["n_high"] == n_) & (d["n_data"] > 0)], c_, f"{n_} of 4 pillars High")
         cat(d[d["n_data"] == 0], NO_DATA, "No data")
+    elif colour_by == "weak":
+        WEAK = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#eb6834",
+                "Market access": "#8a5cc4", "No bottleneck": "#cde8d6"}
+        for w_, c_ in WEAK.items():
+            cat(d[d["weak"] == w_], c_, w_ if w_ == "No bottleneck" else f"Weakest: {w_}")
+        cat(d[d["weak"].isna()], NO_DATA, "No data")
     elif colour_by == "cover":
         steps = {4: "#3d3a33", 3: "#7d786c", 2: "#b3ad9f", 1: "#d9d4c7", 0: "#f4f3ef"}
         for n_, c_ in steps.items():
@@ -539,13 +555,9 @@ def profile(lgd):
     n_high = sum(r[f"{p}_lvl"] == "High" for p in PK)
     n_nd = sum(not isinstance(r[f"{p}_lvl"], str) for p in PK)
     st.caption(f"High on {n_high}, Low on {n_low}" + (f", no data on {n_nd}" if n_nd else "") + " of 4 pillars.")
-    if isinstance(r["weak"], str):
-        wk = ("<b>No bottleneck</b>: no pillar is in the bottom third." if r["weak"] == "No bottleneck" else
-              f"<b>Weakest pillar: {r['weak']}</b>, the lowest percentile among its pillars in the bottom third.")
-        st.markdown(f'<div class="note">🔎 {wk}</div>', unsafe_allow_html=True)
 
     if scope == "all":
-        st.caption("Choose a one-pillar option under *Colour the map by* to see a pillar's measures for this mandal.")
+        st.caption("Choose **One pillar** in the sidebar to see a pillar's measures for this mandal.")
     else:
         st.markdown(f"**{META['name'] if section == 'Business areas' else PILLARS[layer]['name']}: details**")
         if pd.isna(r["cur_score"]):
@@ -582,43 +594,124 @@ def profile(lgd):
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
 
+def clicked_lgd(ev, tl):
+    pts = getattr(getattr(ev, "selection", None), "points", None) or \
+        ((ev or {}).get("selection", {}).get("points", []) if isinstance(ev, dict) else [])
+    if not pts:
+        return None
+    p = pts[0]
+    lgd = p.get("location")
+    if lgd is None:
+        try:
+            lgd = tl[p["curve_number"]][p["point_index"]]
+        except (KeyError, IndexError, TypeError):
+            lgd = None
+    return lgd
+
+
+def small_map(d, p, dist):
+    """One pillar's levels for the selected mandal's district, in the same colours as the profile cards."""
+    fig, tl = go.Figure(), []
+    names = ({"High": "Well connected", "Medium": "Average", "Low": "Poorly connected"} if p == "con"
+             else {k: k for k in LEVEL_COLOURS})
+    groups = [(d[d[f"{p}_lvl"] == lv], LEVEL_COLOURS[lv], names[lv]) for lv in ["High", "Medium", "Low"]] + \
+             [(d[d[f"{p}_lvl"].isna()], NO_DATA, "No data")]
+    for sub, colour, nm in groups:
+        if sub.empty:
+            continue
+        txt = [f"<b>{r['mandal_name']}</b><br>{PILLARS[p]['name']}: <b>{nm}</b>"
+               + ("" if pd.isna(r[f"{p}_score"]) else
+                  f"<br>Score {fmt_score(PILLARS[p]['score_kind'], r[f'{p}_score'])} · rank {int(r[f'{p}_rk'])} of {N[p]}")
+               for _, r in sub.iterrows()]
+        fig.add_trace(go.Choropleth(locations=sub["mandal_lgd"], z=np.ones(len(sub)), text=txt, hoverinfo="text",
+                                    geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd",
+                                    colorscale=[[0, colour], [1, colour]], showscale=False, showlegend=False,
+                                    marker_line_color="white", marker_line_width=0.6))
+        tl.append(sub["mandal_lgd"].tolist())
+    lons, lats = district_lines([dist])
+    fig.add_trace(go.Scattergeo(lon=lons, lat=lats, mode="lines", line=dict(color="#6b6862", width=0.8),
+                                hoverinfo="skip", showlegend=False))
+    tl.append([])
+    sel = d[d["mandal_lgd"] == st.session_state.mandal_lgd]
+    if not sel.empty:
+        fig.add_trace(go.Choropleth(locations=sel["mandal_lgd"], z=[1], geojson=MANDAL_GEO,
+                                    featureidkey="properties.mandal_lgd",
+                                    colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
+                                    marker_line_color="#111", marker_line_width=3, showscale=False,
+                                    hoverinfo="skip", showlegend=False))
+        tl.append([])
+    fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+                      hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"))
+    return fig, tl
+
+
 with tabs[0]:
     left, right = st.columns([1.5, 1], gap="large")
+    sel_lgd = st.session_state.mandal_lgd
+    four_view = sel_lgd is not None and section == "Infrastructure pillars"
     with left:
-        fig, trace_lgd = build_map(df)
-        ev = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points", key="map",
-                             config=MAP_CONFIG)
-        pts = getattr(getattr(ev, "selection", None), "points", None) or \
-            ((ev or {}).get("selection", {}).get("points", []) if isinstance(ev, dict) else [])
-        if pts:
-            p = pts[0]
-            lgd = p.get("location")
-            if lgd is None:
-                try:
-                    lgd = trace_lgd[p["curve_number"]][p["point_index"]]
-                except (KeyError, IndexError, TypeError):
-                    lgd = None
-            if lgd is not None and int(lgd) != st.session_state.mandal_lgd:
-                st.session_state.mandal_lgd = int(lgd)
-                st.rerun()
-        MODE_NOTE = {
-            "dlevel": "Each mandal compared only with mandals in its own district (top, middle, bottom third).",
-            "nhigh": "How many of the four pillars each mandal is High on (top third). Mandals missing a pillar can't reach 4.",
-            "cover": "How many of the four pillars have data for each mandal. Darker = more complete.",
-        }
-        if colour_by in MODE_NOTE:
-            st.caption(MODE_NOTE[colour_by])
-        st.caption("Hover for details · **click a mandal** to see it across all four pillars · click a legend "
-                   "item to hide it.")
+        if four_view:
+            r0 = DF[DF["mandal_lgd"] == sel_lgd].iloc[0]
+            dist = r0["district_name"]
+            h1, h2 = st.columns([2.3, 1.7])
+            h1.markdown(f"**{r0['mandal_name']} across the four pillars** · {dist} district")
+            if h2.button("↩ Back to the state map", use_container_width=True):
+                select_mandal(None)
+            legend = "".join(f'<span class="sw" style="background:{c};border:1px solid #cfcdc6"></span>{n}&nbsp;&nbsp;'
+                             for n, c in [("High / Well connected", LEVEL_COLOURS["High"]),
+                                          ("Medium / Average", LEVEL_COLOURS["Medium"]),
+                                          ("Low / Poorly connected", LEVEL_COLOURS["Low"]), ("No data", NO_DATA)])
+            st.markdown(f'<div class="muted">{legend}</div>', unsafe_allow_html=True)
+            dd = DF[DF["district_name"] == dist]
+            for row in (PK[:2], PK[2:]):
+                cols_ = st.columns(2)
+                for c_, p in zip(cols_, row):
+                    with c_:
+                        st.markdown(f"**{PILLARS[p]['icon']} {PILLARS[p]['name']}**")
+                        f_, tl_ = small_map(dd, p, dist)
+                        ev_ = st.plotly_chart(f_, use_container_width=True, on_select="rerun", selection_mode="points",
+                                              key=f"four_{p}_{st.session_state.map_ver}", config=MAP_CONFIG)
+                        lg = clicked_lgd(ev_, tl_)
+                        if lg is not None and int(lg) != sel_lgd:
+                            select_mandal(lg)
+            st.caption(f"Each small map is one pillar for {dist} district, in the same colours as the profile cards. "
+                       f"{r0['mandal_name']} is outlined in black. Click another mandal to switch to it.")
+        else:
+            fig, trace_lgd = build_map(df)
+            ev = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points",
+                                 key=f"map_{st.session_state.map_ver}", config=MAP_CONFIG)
+            lg = clicked_lgd(ev, trace_lgd)
+            if lg is not None and int(lg) != sel_lgd:
+                select_mandal(lg)
+            MODE_NOTE = {
+                "dlevel": "Each mandal compared only with mandals in its own district (top, middle, bottom third).",
+                "nhigh": "How many of the four pillars each mandal is High on (top third). Mandals missing a pillar can't reach 4.",
+                "weak": "The pillar each mandal does worst on, among pillars in the bottom third. Light green = no bottleneck. Only pillars with data are compared.",
+                "cover": "How many of the four pillars have data for each mandal. Darker = more complete.",
+            }
+            if colour_by in MODE_NOTE:
+                st.caption(MODE_NOTE[colour_by])
+            st.caption("Hover for details · **click a mandal** to see it on all four pillars · click a legend "
+                       "item to hide it.")
+            if sel_lgd is not None:
+                if st.button("Clear the selected mandal"):
+                    select_mandal(None)
     with right:
         opts = df.sort_values(["district_name", "mandal_name"])
         labels, lgds = opts["label"].tolist(), opts["mandal_lgd"].tolist()
-        cur = lgds.index(st.session_state.mandal_lgd) if st.session_state.mandal_lgd in lgds else 0
-        chosen = st.selectbox("Find a mandal", labels, index=cur, help="Type to search.")
-        if lgds[labels.index(chosen)] != st.session_state.mandal_lgd:
-            st.session_state.mandal_lgd = lgds[labels.index(chosen)]
-            st.rerun()
-        profile(st.session_state.mandal_lgd)
+        cur = lgds.index(sel_lgd) if sel_lgd in lgds else None
+        chosen = st.selectbox("Find a mandal", labels, index=cur, placeholder="Type a mandal name…",
+                              help="Type to search, or click a mandal on the map.",
+                              key=f"find_{st.session_state.map_ver}")
+        if chosen is not None and lgds[labels.index(chosen)] != sel_lgd:
+            select_mandal(lgds[labels.index(chosen)])
+        if sel_lgd is None:
+            st.markdown('<div class="card"><h4>Select a mandal</h4>Click a mandal on the map or type its name above. '
+                        'The map will then show it on all four pillars, side by side, and its profile appears here.'
+                        '</div>', unsafe_allow_html=True)
+        else:
+            profile(sel_lgd)
 
 # ════════════════════════════════════════════════════════════════════════════
 # 6. COMPARE
@@ -628,7 +721,9 @@ with tabs[1]:
     st.caption("Bars are percentiles (100 = best among mandals with data). A missing bar means no data.")
     pool = DF.sort_values(["district_name", "mandal_name"])
     lab = dict(zip(pool["mandal_lgd"], pool["label"]))
-    default = [st.session_state.mandal_lgd] + [x for x in DF.sort_values("mkt_rk")["mandal_lgd"] if x != st.session_state.mandal_lgd][:2]
+    _sel = st.session_state.mandal_lgd
+    default = ([_sel] if _sel is not None else []) + \
+        [x for x in DF.sort_values("agr_rk")["mandal_lgd"] if x != _sel][:3 - (1 if _sel is not None else 0)]
     picked = st.multiselect("Mandals", pool["mandal_lgd"].tolist(), default=default, max_selections=5,
                             format_func=lambda x: lab.get(x, str(x)))
     with_biz = st.checkbox("Also show the four business areas (team scores)", value=False)
@@ -665,20 +760,15 @@ with tabs[1]:
 # ════════════════════════════════════════════════════════════════════════════
 with tabs[2]:
     st.markdown("#### All mandals across the four pillars")
-    st.caption("Follows the district filter. Filter, for example, mandals that are Low on Water, or where Water is the weakest pillar.")
-    f1, f2, f3 = st.columns([1, 1, 1])
-    fw = f3.multiselect("Weakest pillar", [PILLARS[p]["name"] for p in PK] + ["No bottleneck"],
-                        placeholder="Any", help="Pick, for example, Water to list every mandal where water is the bottleneck.")
+    st.caption("Follows the district filter. Use the filter to find, for example, mandals that are Low on Water.")
+    f1, f2 = st.columns([1, 1])
     fp = f1.selectbox("Filter on pillar", ["(none)"] + PK, format_func=lambda k: k if k == "(none)" else PILLARS[k]["name"])
     fl = f2.multiselect("Level", ["High", "Medium", "Low", "No data"], default=["High", "Medium", "Low", "No data"],
                         disabled=fp == "(none)")
     t = df.copy()
     if fp != "(none)":
         t = t[t[f"{fp}_lvl"].fillna("No data").isin(fl)]
-    if fw:
-        t = t[t["weak"].isin(fw)]
-    out = pd.DataFrame({"Mandal": t["mandal_name"], "District": t["district_name"],
-                        "Weakest pillar": t["weak"].fillna("No data")})
+    out = pd.DataFrame({"Mandal": t["mandal_name"], "District": t["district_name"]})
     for p in PK:
         out[f"{PILLARS[p]['name']} level"] = t[f"{p}_lvl"].fillna("No data")
         out[f"{PILLARS[p]['name']} percentile"] = t[f"{p}_pct"].round()
