@@ -277,8 +277,24 @@ with st.sidebar:
         ms = LAYERS[layer]["measures"]
         measure_pick = st.selectbox("Measure", range(len(ms)), format_func=lambda i: ms[i][1])
     st.divider()
+    # When a mandal opens the four-pillar view, fill in its district here. "Back to the state map" puts back
+    # whatever the filter held before.
+    _sel = st.session_state.get("mandal_lgd")
+    _ss = st.session_state
+    if _ss.pop("restore_districts", False) and _ss.get("auto_dist_for") is not None:
+        _ss.districts_ms = _ss.get("prev_districts", [])
+        _ss.auto_dist_for = None
+    if _sel is not None and section == "Infrastructure pillars" and _ss.get("auto_dist_for") != _sel:
+        _hits = DF.loc[DF["mandal_lgd"] == _sel, "district_name"]
+        if not _hits.empty:
+            if _ss.get("auto_dist_for") is None:
+                _ss.prev_districts = list(_ss.get("districts_ms", []))
+            _ss.districts_ms = [_hits.iloc[0]]
+            _ss.auto_dist_for = _sel
     districts = st.multiselect("Districts", sorted(DF["district_name"].unique()), placeholder="All 26 districts",
-                               help="Leave empty for the whole state. The map zooms to the districts you pick.")
+                               key="districts_ms",
+                               help="Leave empty for the whole state. The map zooms to the districts you pick. "
+                                    "Filled in automatically when you select a mandal.")
     st.caption("Grey on every map means **no data**, never a low score.")
 
 # Current layer
@@ -325,11 +341,14 @@ if "mandal_lgd" not in st.session_state:
 if "map_ver" not in st.session_state:
     st.session_state.map_ver = 0          # bumping this resets the maps' click state
 if st.session_state.mandal_lgd is not None and st.session_state.mandal_lgd not in set(df["mandal_lgd"]):
-    st.session_state.mandal_lgd = None
+    st.session_state.mandal_lgd = None    # the user filtered the mandal out: keep their filter
+    st.session_state.auto_dist_for = None
 
 
 def select_mandal(lgd):
     st.session_state.mandal_lgd = None if lgd is None else int(lgd)
+    if lgd is None:
+        st.session_state.restore_districts = True   # applied before the Districts box is drawn
     st.session_state.map_ver += 1
     st.rerun()
 
@@ -625,8 +644,8 @@ def small_map(d, p, dist):
                for _, r in sub.iterrows()]
         fig.add_trace(go.Choropleth(locations=sub["mandal_lgd"], z=np.ones(len(sub)), text=txt, hoverinfo="text",
                                     geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd",
-                                    colorscale=[[0, colour], [1, colour]], showscale=False, showlegend=False,
-                                    marker_line_color="white", marker_line_width=0.6))
+                                    colorscale=[[0, colour], [1, colour]], showscale=False, showlegend=True,
+                                    name=nm, marker_line_color="white", marker_line_width=0.6))
         tl.append(sub["mandal_lgd"].tolist())
     lons, lats = district_lines([dist])
     fig.add_trace(go.Scattergeo(lon=lons, lat=lats, mode="lines", line=dict(color="#6b6862", width=0.8),
@@ -640,8 +659,12 @@ def small_map(d, p, dist):
                                     marker_line_color="#111", marker_line_width=3, showscale=False,
                                     hoverinfo="skip", showlegend=False))
         tl.append([])
-    fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
+    # Same legend box as the state map, kept in a strip on the left so it never covers a mandal
+    fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)",
+                    domain=dict(x=[0.3, 1], y=[0, 1]))
     fig.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+                      legend=dict(x=0, y=0.02, xanchor="left", yanchor="bottom", bgcolor="rgba(255,255,255,0.9)",
+                                  bordercolor="#e3e1da", borderwidth=1, font=dict(size=11)),
                       hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"))
     return fig, tl
 
@@ -658,11 +681,6 @@ with tabs[0]:
             h1.markdown(f"**{r0['mandal_name']} across the four pillars** · {dist} district")
             if h2.button("↩ Back to the state map", use_container_width=True):
                 select_mandal(None)
-            legend = "".join(f'<span class="sw" style="background:{c};border:1px solid #cfcdc6"></span>{n}&nbsp;&nbsp;'
-                             for n, c in [("High / Well connected", LEVEL_COLOURS["High"]),
-                                          ("Medium / Average", LEVEL_COLOURS["Medium"]),
-                                          ("Low / Poorly connected", LEVEL_COLOURS["Low"]), ("No data", NO_DATA)])
-            st.markdown(f'<div class="muted">{legend}</div>', unsafe_allow_html=True)
             dd = DF[DF["district_name"] == dist]
             for row in (PK[:2], PK[2:]):
                 cols_ = st.columns(2)
@@ -698,7 +716,8 @@ with tabs[0]:
                 if st.button("Clear the selected mandal"):
                     select_mandal(None)
     with right:
-        opts = df.sort_values(["district_name", "mandal_name"])
+        # In the four-pillar view the filter holds only the selected district; still let any mandal be searched
+        opts = (DF if four_view else df).sort_values(["district_name", "mandal_name"])
         labels, lgds = opts["label"].tolist(), opts["mandal_lgd"].tolist()
         cur = lgds.index(sel_lgd) if sel_lgd in lgds else None
         chosen = st.selectbox("Find a mandal", labels, index=cur, placeholder="Type a mandal name…",

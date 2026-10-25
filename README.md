@@ -23,7 +23,8 @@ Built around the professor's review on 24 October 2026:
 (or type its name in *Find a mandal*) and, in the Infrastructure pillars section, the map area switches to **four
 small maps, one per pillar**, zoomed to that mandal's district with the mandal outlined in black. Click another
 mandal on any small map to switch to it, or **Back to the state map** to return. The profile cards on the right
-give the exact scores and ranks.
+give the exact scores and ranks. Each small map carries the same legend as the state map, and the sidebar's
+*Districts* box fills in with the mandal's district; **Back to the state map** restores what the box held before.
 
 **Levels.** Connectivity keeps the levels from its report (Well connected, Average, Poorly connected). The other
 pillars split their scored mandals into thirds: High is the top third of mandals with data.
