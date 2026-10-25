@@ -306,9 +306,9 @@ with st.sidebar:
         "score": ("Score (shading)", "Finer detail than three levels"),
         "measure": ("A single measure", "One input to the score, e.g. canal coverage"),
         "best": ("Strongest pillar", "The pillar each mandal scores highest on"),
-        "nhigh": ("Number of pillars at High (0–4)", "Overall infrastructure strength"),
+        "nhigh": ("How many pillars are strong", "Strong = top third of the state on that pillar"),
         "bbest": ("Strongest business area", "The business each mandal scores highest on"),
-        "bnhigh": ("Number of business areas at High (0–4)", "Overall business opportunity"),
+        "bnhigh": ("How many business areas are strong", "Strong = top third of the opportunity score"),
         "weak": ("Weakest pillar (bottleneck)", "What is holding each mandal back"),
         "cover": ("Data coverage (0–4 pillars with data)", "Where data is missing"),
     }
@@ -373,7 +373,7 @@ def _strongest(r):
     """The pillar a mandal scores highest on, among the pillars where it is High (top third)."""
     highs = [p for p in PK if r[f"{p}_t3"] == "High"]
     if not highs:
-        return "No pillar at High" if r["n_data"] > 0 else None
+        return "Not strong on any pillar" if r["n_data"] > 0 else None
     return PILLARS[max(highs, key=lambda p: r[f"{p}_pct"])]["name"]
 
 
@@ -390,11 +390,32 @@ DF["b_high"] = (_bl == "High").sum(axis=1)
 def _strongest_biz(r):
     highs = [b for b in BK if r[f"{b}_t3"] == "High"]
     if not highs:
-        return "No business at High" if r["b_data"] > 0 else None
+        return "Not strong in any business area" if r["b_data"] > 0 else None
     return BUSINESSES[max(highs, key=lambda b: r[f"{b}_pct"])]["name"]
 
 
 DF["bbest"] = DF.apply(_strongest_biz, axis=1)
+# Which pillars / business areas are strong, written out (for hover, the breakdown table and highlighting)
+DF["p_combo"] = DF.apply(lambda r: " + ".join(PILLARS[p]["name"] for p in PK if r[f"{p}_t3"] == "High"), axis=1)
+DF["b_combo"] = DF.apply(lambda r: " + ".join(BUSINESSES[b]["name"] for b in BK if r[f"{b}_t3"] == "High"), axis=1)
+
+
+def strong_line(r, biz):
+    """Hover line: which pillars (or business areas) are strong for this mandal."""
+    if (r["b_data"] if biz else r["n_data"]) == 0:
+        return "Data not available"
+    combo = r["b_combo"] if biz else r["p_combo"]
+    if not combo:
+        return "Not strong in any business area" if biz else "Not strong on any pillar"
+    return ("Strong in: " if biz else "Strong on: ") + "<b>" + combo.replace(" + ", ", ") + "</b>"
+
+
+def strong_label(n, biz):
+    if biz:
+        return ("Strong in all 4 business areas" if n == 4 else "Not strong in any business area" if n == 0
+                else f"Strong in {n} business area{'s' if n > 1 else ''}")
+    return ("Strong on all 4 pillars" if n == 4 else "Not strong on any pillar" if n == 0
+            else f"Strong on {n} pillar{'s' if n > 1 else ''}")
 RG = f"{layer}_region" if (view == "team" and scope == "one") else None
 
 df = DF if not districts else DF[DF["district_name"].isin(districts)]
@@ -541,18 +562,8 @@ def hover(d):
     out = []
     for _, r in d.iterrows():
         t = f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>"
-        if scope == "all" and BIZ:
-            t += (f"High on <b>{int(r['b_high'])} of 4</b> business areas" if r["b_data"] > 0
-                  else "<i>Not in the teams' opportunity models</i>")
-            if r["b_data"] > 0:
-                t += "<br>" + "<br>".join(f"{BUSINESSES[b]['name']}: {lvl(r[f'{b}_t3'])}" for b in BK)
-            out.append(t)
-            continue
         if scope == "all":
-            t += (f"High on <b>{int(r['n_high'])} of {int(r['n_data'])}</b> pillars with data"
-                  + (f" · weakest: <b>{r['weak']}</b>" if isinstance(r["weak"], str) else "") + "<br>"
-                  + "<br>".join(f"{PILLARS[p]['name']}: {lvl(r[f'{p}_t3'])}" for p in PK))
-            out.append(t)
+            out.append(t + strong_line(r, BIZ))
             continue
         if pd.isna(r["cur_score"]):
             t += f"<i>{nodata_reason(r)}</i>"
@@ -618,25 +629,25 @@ def build_map(d):
     elif colour_by == "nhigh":
         steps = {4: "#0d366b", 3: "#2a6fc4", 2: "#6da7ec", 1: "#b7d3f6", 0: "#eef4fc"}
         for n_, c_ in steps.items():
-            cat(d[(d["n_high"] == n_) & (d["n_data"] > 0)], c_, f"{n_} of 4 pillars High")
-        cat(d[d["n_data"] == 0], NO_DATA, "No data")
+            cat(d[(d["n_high"] == n_) & (d["n_data"] > 0)], c_, strong_label(n_, False))
+        cat(d[d["n_data"] == 0], NO_DATA, "Data not available")
     elif colour_by == "best":
         BEST = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#1f9e89",
-                "Market access": "#8a5cc4", "No pillar at High": "#ece9e2"}
+                "Market access": "#8a5cc4", "Not strong on any pillar": "#ece9e2"}
         for w_, c_ in BEST.items():
             cat(d[d["best"] == w_], c_, w_ if w_.startswith("No") else f"Strongest: {w_}")
         cat(d[d["best"].isna()], NO_DATA, "No data")
     elif colour_by == "bbest":
         BB = {"Agriculture": "#3f8f29", "Livestock": "#9a5b1e", "Rural Services": "#8a5cc4",
-              "Aquaculture": "#1f9ec4", "No business at High": "#c9c2ae"}
+              "Aquaculture": "#1f9ec4", "Not strong in any business area": "#c9c2ae"}
         for w_, c_ in BB.items():
             cat(d[d["bbest"] == w_], c_, w_ if w_.startswith("No") else f"Strongest: {w_}")
-        cat(d[d["bbest"].isna()], NO_DATA, "Not in the teams' models")
+        cat(d[d["bbest"].isna()], NO_DATA, "Data not available")
     elif colour_by == "bnhigh":
         steps = {4: "#0d366b", 3: "#2a6fc4", 2: "#6da7ec", 1: "#b7d3f6", 0: "#eef4fc"}
         for n_, c_ in steps.items():
-            cat(d[(d["b_high"] == n_) & (d["b_data"] > 0)], c_, f"{n_} of 4 business areas High")
-        cat(d[d["b_data"] == 0], NO_DATA, "Not in the teams' models")
+            cat(d[(d["b_high"] == n_) & (d["b_data"] > 0)], c_, strong_label(n_, True))
+        cat(d[d["b_data"] == 0], NO_DATA, "Data not available")
     elif colour_by == "weak":
         WEAK = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#eb6834",
                 "Market access": "#8a5cc4", "No bottleneck": "#cde8d6"}
@@ -685,7 +696,7 @@ def build_map(d):
     fig.update_layout(height=640, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                       legend=dict(x=0.01, y=0.99, xanchor="left", yanchor="top", bgcolor="rgba(255,255,255,0.9)",
                                   bordercolor="#e3e1da", borderwidth=1, font=dict(size=12)),
-                      hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"))
+                      hoverlabel=dict(bgcolor="white", font=dict(size=13, color="#22211f"), bordercolor="#cfcdc6"))
     return fig, trace_lgd
 
 
@@ -703,8 +714,8 @@ def overview_fig(groups, hover_txt, caption, height=440):
     for sub, colour, name in groups:
         if sub.empty:
             continue
-        fig.add_trace(go.Choropleth(locations=sub["mandal_lgd"], z=np.ones(len(sub)), text=hover_txt(sub),
-                                    hoverinfo="text", geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd",
+        fig.add_trace(go.Choropleth(locations=sub["mandal_lgd"], z=np.ones(len(sub)), hoverinfo="skip",  # no hover box
+                                    geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd",
                                     colorscale=[[0, colour], [1, colour]], showscale=False, name=name, showlegend=True,
                                     marker_line_color="white", marker_line_width=0.35))
     lons, lats = district_lines(districts)
@@ -719,7 +730,7 @@ def overview_fig(groups, hover_txt, caption, height=440):
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                       legend=dict(x=0.01, y=0.99, xanchor="left", yanchor="top", bgcolor="rgba(255,255,255,0.9)",
                                   bordercolor="#e3e1da", borderwidth=1, font=dict(size=12)),
-                      hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"),
+                      hoverlabel=dict(bgcolor="white", font=dict(size=13, color="#22211f"), bordercolor="#cfcdc6"),
                       # The caption sits inside the map's frame, in the empty bottom-right corner next to the coast
                       annotations=[dict(text=caption, x=0.99, y=0.03, xref="paper", yref="paper", xanchor="right",
                                         yanchor="bottom", showarrow=False, align="right",
@@ -728,25 +739,23 @@ def overview_fig(groups, hover_txt, caption, height=440):
 
 
 def _hov_infra(d):
-    return [f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>Strongest pillar: <b>{lvl(r['best'])}</b><br>"
-            + "<br>".join(f"{PILLARS[p]['name']}: {lvl(r[f'{p}_t3'])}" for p in PK) for _, r in d.iterrows()]
+    return [f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>{strong_line(r, False)}"
+            for _, r in d.iterrows()]
 
 
 def _hov_biz(d):
-    return [f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>"
-            + (f"Strongest business: <b>{r['bbest']}</b><br>" + "<br>".join(
-               f"{BUSINESSES[b]['name']}: {lvl(r[f'{b}_t3'])}" for b in BK) if r["b_data"] > 0
-               else "<i>Not in the teams' opportunity models</i>") for _, r in d.iterrows()]
+    return [f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>{strong_line(r, True)}"
+            for _, r in d.iterrows()]
 
 
 if section == "Overview":
     st.markdown('<div class="eyebrow">Entrepreneurial Opportunity Zones · Andhra Pradesh · mandal level</div>',
                 unsafe_allow_html=True)
-    st.markdown("## Andhra Pradesh Overview")
+    st.markdown("## Andhra Pradesh")
     st.markdown("#### Infrastructure & Business Opportunity Overview")
     st.caption(f"{', '.join(districts) if districts else 'All of Andhra Pradesh'} · Left: each mandal's strongest "
-               "infrastructure pillar. Right: each mandal's strongest business opportunity. Hover a mandal on either "
-               "map; pick a Section in the sidebar to explore one in depth.")
+               "infrastructure pillar. Right: each mandal's strongest business opportunity. Pick a Section in the "
+               "sidebar to explore one in depth.")
     L, R = st.columns(2, gap="large")
     with L:
         chips = "".join(f'<span class="chip"><b>{int((df[f"{p}_t3"] == "High").sum())}</b> {PILLARS[p]["icon"]} '
@@ -754,7 +763,7 @@ if section == "Overview":
         st.markdown(f'<div class="chips"><span class="chip"><b>{len(df):,}</b> mandals</span>{chips}'
                     '<span class="sm">at High</span></div>', unsafe_allow_html=True)
         BP = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#1f9e89", "Market access": "#8a5cc4",
-              "No pillar at High": "#ece9e2"}
+              "Not strong on any pillar": "#ece9e2"}
         g = [(df[df["best"] == w], c, w if w.startswith("No") else f"Strongest: {w}") for w, c in BP.items()] + \
             [(df[df["best"].isna()], NO_DATA, "No data")]
         st.plotly_chart(overview_fig(g, _hov_infra, "🏗️ <b>Infrastructure Overview</b><br>strongest pillar"),
@@ -765,9 +774,9 @@ if section == "Overview":
         st.markdown(f'<div class="chips"><span class="chip"><b>{int((df["b_data"] > 0).sum()):,}</b> scored</span>'
                     f'{chips}<span class="sm">at High</span></div>', unsafe_allow_html=True)
         BB = {"Agriculture": "#3f8f29", "Livestock": "#9a5b1e", "Rural Services": "#c2477a", "Aquaculture": "#1f9ec4",
-              "No business at High": "#c9c2ae"}
+              "Not strong in any business area": "#c9c2ae"}
         g = [(df[df["bbest"] == w], c, w if w.startswith("No") else f"Strongest: {w}") for w, c in BB.items()] + \
-            [(df[df["bbest"].isna()], NO_DATA, "Not in the teams' models")]
+            [(df[df["bbest"].isna()], NO_DATA, "Data not available")]
         st.plotly_chart(overview_fig(g, _hov_biz, "💼 <b>Business Opportunity Overview</b><br>strongest business area"),
                         use_container_width=True, config=MAP_CONFIG, key="ov_biz")
     st.caption("Strongest = the pillar (or business) where the mandal is in the top third and scores highest. "
@@ -1043,7 +1052,7 @@ def small_map(d, p, dist, legend=False):
                       legend=dict(x=0, y=0.02, xanchor="left", yanchor="bottom", bgcolor="rgba(255,255,255,0.9)",
                                   bordercolor="#e3e1da", borderwidth=1, font=dict(size=11),
                                   itemclick=False, itemdoubleclick=False),
-                      hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"))
+                      hoverlabel=dict(bgcolor="white", font=dict(size=13, color="#22211f"), bordercolor="#cfcdc6"))
     return fig, tl
 
 
@@ -1103,14 +1112,16 @@ with tabs[0]:
                 "best": "Each mandal is coloured by the pillar it scores highest on, among the pillars where it is in the "
                         "state's top third (High). Pale = High on no pillar. Many mandals are High on more than one "
                         "pillar; the map shows only the strongest one, and the profile shows all four.",
-                "nhigh": "How many of the four pillars each mandal is High on (top third). Mandals missing a pillar can't reach 4.",
+                "nhigh": "How many of the four pillars each mandal is strong on (top third of the state). Hover a mandal to "
+                         "see which. Mandals missing a pillar can't reach 4.",
                 "weak": "The pillar each mandal does worst on, among pillars in the bottom third. Light green = no bottleneck. Only pillars with data are compared.",
                 "cover": "How many of the four pillars have data for each mandal. Darker = more complete.",
                 "bbest": "Each mandal is coloured by the business area it scores highest on, among those where it is in "
-                         "the top third (High) of the team's opportunity score. Taupe = High on none. Grey = outside "
-                         "the teams' models (323 mandals with all four pillars).",
-                "bnhigh": "How many of the four business areas each mandal is High on (top third of the opportunity "
-                          "score). Grey = outside the teams' models.",
+                         "the top third (High) of the team's opportunity score. Taupe = High on none. Grey = data not "
+                         "available (outside the 323 mandals the teams scored).",
+                "bnhigh": "How many of the four business areas each mandal is strong in (top third of the opportunity "
+                          "score). Hover to see which. Grey = data not "
+                          "available (outside the 323 mandals the teams scored).",
             }
             if BIZ and scope == "one":
                 MODE_NOTE["level"] = ("★ = the team's top 15 pilot mandals. Grey = outside the team's model "

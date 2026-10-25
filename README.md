@@ -5,13 +5,18 @@ An interactive dashboard for exploring the results of **Problem Statement 2: Ent
 
 ## What's in it
 
-**Opening page: Andhra Pradesh Overview.** When the dashboard loads, no *Section* is selected and the page shows
+**Opening page: Andhra Pradesh.** When the dashboard loads, no *Section* is selected and the page shows
 "Infrastructure & Business Opportunity Overview": two maps side by side. Left: each mandal's strongest
 infrastructure pillar. Right: each mandal's strongest business area (team opportunity scores). Each map has its
-legend top-left and its caption inside the frame, bottom-right. Pick *Infrastructure pillars* or *Business areas*
-in the sidebar to explore one in depth; "↩ Back to the Andhra Pradesh overview" in the sidebar returns here.
-The two sections open on "Andhra Pradesh Infrastructure Overview" and "Andhra Pradesh Business Opportunity
-Overview".
+legend top-left and its caption inside the frame, bottom-right; these two maps have no hover box. Pick
+*Infrastructure pillars* or *Business areas* in the sidebar to explore one in depth; "↩ Back to the Andhra Pradesh
+overview" in the sidebar returns here. The two sections open on "Andhra Pradesh Infrastructure Overview" and
+"Andhra Pradesh Business Opportunity Overview".
+
+**How many are strong.** *Colour the map by → How many pillars are strong* (or *How many business areas are
+strong*) shades each mandal from "Strong on all 4 pillars" to "Not strong on any pillar" (strong = top third of
+the state). Hovering a mandal shows its name, district and which pillars (or business areas) are strong. Grey
+areas read "Data not available".
 
 Built around the professor's review on 24 October 2026:
 
