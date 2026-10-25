@@ -33,16 +33,29 @@ four business areas from the strongest level down (★ = High).
 **Levels.** Connectivity keeps the levels from its report (Well connected, Average, Poorly connected). The other
 pillars split their scored mandals into thirds: High is the top third of mandals with data.
 
-**Business areas** (second section): Agriculture, Livestock, Rural Services and Aquaculture. Each has the team's
-own analysis and a **draft opportunity score** that combines the four pillars with draft weights (Low 1, Medium 2,
-High 3). Agriculture, Livestock and Rural Services use slide 14 of the mid-review deck. Aquaculture uses Claude's
-suggested ratings, approved by Nairita and pending team review (Water High, Electricity High, Connectivity
-Medium/High, Market access Medium).
+**Business areas** (second section): Agriculture, Livestock, Rural Services and Aquaculture.
+
+- **Opening view.** *Business area* starts blank. The map colours each mandal by its **strongest business area**
+  (top third of the team's opportunity score); the figures at the top give the total number of mandals and, for
+  each business, the number at High. *Colour the map by* can also show Number of business areas at High (0–4).
+- **One business area.** The map shows the team's **opportunity score** (0–100) from the Integrated clustering
+  reports: the business's own data combined with the infrastructure pillars, weighted equally. ★ marks the team's
+  top 15 pilot mandals. *A single measure* includes the **business activity score** (the team's earlier score from
+  business data only, 679 mandals) and its inputs.
+- **Selecting a mandal.** "↩ Back to the state map" sits above the map. Under the map, side by side:
+  ① **Infrastructure check** — what the business needs from each pillar against what the mandal has (Meets /
+  Partly / Gap / Unknown) and a verdict (Suitable, Partly suitable, Not suitable); ② **Opportunity score** — score,
+  rank, level, zone, possible SHG enterprises and support range. With no business picked, one line per business.
+- **Regions tab.** The five opportunity zones per business, with possible SHG enterprises and support ranges,
+  and the top 15 pilot mandals.
+- What each business needs comes from slide 14 of the mid-review deck; Aquaculture's ratings are Claude's
+  suggestion, approved by Nairita and pending team review. They are used only for the infrastructure check.
 
 | Layer | Mandals with data |
 |---|---|
 | Connectivity · Electricity · Water · Market access | 612 · 397 · 661 · 688 |
-| Agriculture · Livestock · Rural Services · Aquaculture | 323 · 679 · 679 · 679 |
+| Agriculture · Livestock · Rural Services · Aquaculture: opportunity score | 323 each |
+| Livestock · Rural Services · Aquaculture: business activity score | 679 each |
 
 **Grey on every map means no data, never a low score.**
 
@@ -78,21 +91,24 @@ The link stays the same and the app updates itself.
 
 | File / folder | What it is |
 |---|---|
-| `app.py` | The dashboard. Labels, colours, caveats and draft weights are in **Section 1, Settings**. |
+| `app.py` | The dashboard. Labels, colours, caveats, business needs and zone texts are in **Section 1, Settings**. |
 | `data/` | Prepared data: one row per mandal with every layer, keyed by LGD code; map shapes; `name_matching.csv`. |
 | `prepare_data.py`, `crosswalk.py` | Rebuild `data/` from `source/`. Needed only when a team's results change. |
-| `source/` | Each team's result file as received (Aquaculture: Shareen's final notebook re-run unchanged). |
+| `source/` | Each team's result file as received. `source/integrated/` holds the four opportunity-score files from the Integrated clustering folder; the app reads them directly. |
 | `static/`, `.streamlit/` | Base map file and app settings. |
 
 ## Notes on the data
 
 - **Electricity** covers 397 mandals (APEPDCL and APCPDCL territory). Its score is PC1, as the Electricity report
-  recommends. The Agriculture composite and the draft scores therefore need the "without Electricity" switch to
-  cover the south.
+  recommends. The opportunity scores need all four pillars, so they cover 323 mandals; the south is grey on the
+  business maps.
 - **Livestock, Rural Services and Aquaculture** files have no LGD code. They were matched by mandal and district
   name: 611 exact, 68 spelling variants checked by hand. Towns later split into urban and rural parts take the
   original LGD code. See `data/name_matching.csv`.
 - **Aquaculture:** Shareen's final notebook re-run unchanged. The output matches her 679-mandal report (six
   regions: Delta Core 72, Inland Baseline 567, Brackish Frontier 12, North Marine Landing 11, Estuarine Creek 10,
   Southern Saline 7).
+- **Opportunity scores (Integrated clustering):** four files, 323 mandals each, with LGD codes; zone counts match
+  the reports. The Agriculture file is identical to the earlier one. Rural Services and Aquaculture do not use the
+  Market access pillar. The Agriculture CSV's mean (45.62) differs slightly from its report (45.96).
 - **Cold storage** is not part of the final framework and has been removed.

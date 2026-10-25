@@ -84,47 +84,84 @@ PILLARS = {
                 caveats=["Measures facility presence, not turnover, prices or travel time."]),
 }
 
+_OPP_NODATA = ("Not in the team's opportunity model: it covers the 323 mandals with data on all four pillars "
+               "(mostly Electricity is missing in the south). A data gap, not a low score.")
+_OPP_LEVEL = "Levels are thirds of the 323 scored mandals: top third High, middle Medium, bottom Low."
+_OPP_SRC = "Integrated clustering report and notebook (Shareen)"
 BUSINESSES = {
-    "agr": dict(name="Agriculture", score_kind="0-100", score_label="Agriculture composite (0–100)",
-                score_help="The Agriculture team's score: the four pillars standardised and weighted equally.",
-                nodata="Not scored: needs all four pillars, and Electricity is missing here.",
-                source="Agriculture analysis and report",
+    "agr": dict(name="Agriculture", icon="🌾", score_kind="0-100", score_label="Opportunity score (0–100)",
+                score_help="The team's opportunity score: market access, electricity, water and connectivity, "
+                           "standardised and weighted equally, rescaled 0–100.",
+                level_rule=_OPP_LEVEL, nodata=_OPP_NODATA, source=_OPP_SRC,
                 measures=[("z_market", "Market access (z-score)", "idx"), ("z_electricity", "Electricity (z-score)", "idx"),
                           ("z_water", "Water (z-score)", "idx"), ("z_connectivity", "Connectivity (z-score)", "idx")],
-                caveats=["323 mandals: only those with all four pillars."]),
-    "liv": dict(name="Livestock", score_kind="index", score_label="Livestock scale score (PC1)",
-                score_help="Higher = more livestock and larger small-ruminant herds. It measures scale, not dairy "
-                           "suitability.",
-                nodata="Not in the Livestock file (newer urban split or new mandal).",
-                source="Livestock Analysis report v3",
-                measures=[("tlu", "Tropical livestock units", "num"), ("buffalo_ratio", "Buffalo ratio", "num"),
+                caveats=["323 mandals: only those with all four pillars.",
+                         "Same file as before; the Integrated clustering folder did not change it."]),
+    "liv": dict(name="Livestock", icon="🐄", score_kind="0-100", score_label="Opportunity score (0–100)",
+                score_help="The team's opportunity score: livestock scale plus market access, electricity, water and "
+                           "connectivity, standardised and weighted equally, rescaled 0–100.",
+                level_rule=_OPP_LEVEL, nodata=_OPP_NODATA, source=_OPP_SRC,
+                measures=[("act", "Business activity score (livestock scale, PC1)", "idx"),
+                          ("tlu", "Tropical livestock units", "num"), ("buffalo_ratio", "Buffalo ratio", "num"),
                           ("small_ruminant", "Small-ruminant specialisation", "num"),
                           ("catchment_tlu", "Livestock within 15 km (TLU)", "num"),
                           ("vet_support", "Vet support per 1,000 TLU", "num"),
                           ("demand_density", "Commercial demand density", "num")],
-                caveats=["Matched to the map by mandal name (no LGD code in the file).",
-                         "Delta dairy mandals score low: the score rewards total herd scale, not buffalo dairy."]),
-    "ser": dict(name="Rural Services", score_kind="index", score_label="Rural services score (PC1)",
-                score_help="Higher = more civic, education, health, PDS, tourism and transport footfall anchors.",
-                nodata="Not in the Rural Services file (newer urban split or new mandal).",
-                source="Rural Services Analysis report",
-                measures=[("civic", "Civic and admin footfall", "num"), ("education", "Education anchors", "num"),
+                caveats=["Opportunity score covers 323 mandals (all four pillars).",
+                         "Business activity score and its measures cover 679 mandals, matched by name (no LGD code)."]),
+    "ser": dict(name="Rural Services", icon="🏥", score_kind="0-100", score_label="Opportunity score (0–100)",
+                score_help="The team's opportunity score: rural services market plus electricity, water and "
+                           "connectivity, standardised and weighted equally, rescaled 0–100.",
+                level_rule=_OPP_LEVEL, nodata=_OPP_NODATA, source=_OPP_SRC,
+                measures=[("act", "Business activity score (services, PC1)", "idx"),
+                          ("civic", "Civic and admin footfall", "num"), ("education", "Education anchors", "num"),
                           ("health", "Healthcare capacity", "num"), ("pds", "Nutrition / PDS network", "num"),
                           ("tourism", "Heritage and tourism pull", "num"), ("transport", "Transport junctions", "num")],
-                caveats=["Matched to the map by mandal name (no LGD code in the file)."]),
-    "aqu": dict(name="Aquaculture", score_kind="index", score_label="Aquaculture score (PC1)",
-                score_help="Higher = larger commercial aquaculture scale and intensity.",
-                nodata="Not in the Aquaculture file (newer urban split or new mandal).",
-                source="Aquaculture Mandal Analysis report (679 mandals) and notebook",
-                measures=[("production", "Production scale (ha)", "num"), ("headroom", "Expansion headroom (ha)", "num"),
+                caveats=["Opportunity score covers 323 mandals; it does not use the Market access pillar.",
+                         "Business activity score and its measures cover 679 mandals, matched by name (no LGD code)."]),
+    "aqu": dict(name="Aquaculture", icon="🐟", score_kind="0-100", score_label="Opportunity score (0–100)",
+                score_help="The team's opportunity score: aquaculture scale plus electricity, water and connectivity, "
+                           "standardised and weighted equally, rescaled 0–100.",
+                level_rule=_OPP_LEVEL, nodata=_OPP_NODATA, source=_OPP_SRC,
+                measures=[("act", "Business activity score (aquaculture, PC1)", "idx"),
+                          ("production", "Production scale (ha)", "num"), ("headroom", "Expansion headroom (ha)", "num"),
                           ("saltpan", "Saltpan capacity (ha)", "num"), ("intensity", "Pond intensity ratio", "num"),
                           ("landing", "Marine landing anchor", "num")],
-                caveats=["Matched to the map by mandal name (no LGD code in the file).",
-                         "Re-run of the team's notebook; matches the 679-mandal report's six regions."]),
+                caveats=["Opportunity score covers 323 mandals; it does not use the Market access pillar.",
+                         "Business activity score and its measures cover 679 mandals, matched by name (no LGD code)."]),
+}
+# The team's integrated opportunity models (Integrated clustering folder): file, score column, rank column
+COMPOSITE = {"agr": ("agriculture_mandal_composite_scored.csv", "agri_composite_score_0_100"),
+             "liv": ("livestock_mandal_composite_scored.csv", "live_composite_score_0_100"),
+             "ser": ("rural_services_mandal_composite_scored.csv", "services_composite_score_0_100"),
+             "aqu": ("aquaculture_mandal_composite_scored.csv", "aqua_composite_score_0_100")}
+# Each zone's possible SHG enterprises and support range, from the four Integrated clustering reports
+ZONE_INFO = {
+    "agr": {1: ("Drying yards, mini dal mills, vegetable crating, sprayer hiring", "₹1.5–3.0 lakh per SHG / VO"),
+            2: ("Pulse cleaning and packing, vermicompost, seed counters", "₹1.0–2.5 lakh per SHG / VO"),
+            3: ("Turmeric and ginger processing, forest-produce cleaning, solar drying", "₹0.8–2.0 lakh per tribal SHG"),
+            4: ("Cashew grading, mango pulp and pickle units, solar fruit dryers", "₹1.0–2.5 lakh per SHG / PG"),
+            5: ("Millet destoners, flour mills, community seed banks", "₹0.5–1.5 lakh per SHG")},
+    "liv": {1: ("Milk testing kiosks, mini bulk milk coolers, curd and ghee units", "₹1.5–3.0 lakh per SHG / VO"),
+            2: ("Fodder silage bags, cattle feed retail, doorstep animal health kits", "₹1.0–2.5 lakh per SHG / VO"),
+            3: ("Sheep and goat rearing groups, meat stalls, mineral feed blocks", "₹1.0–2.5 lakh per SHG / PG"),
+            4: ("Desi cow ghee, solar milk coolers, backyard poultry", "₹0.8–2.0 lakh per SHG"),
+            5: ("Native poultry mother units, backyard goat and piggery, fodder groups", "₹0.5–1.5 lakh per tribal SHG")},
+    "ser": {1: ("MeeSeva and banking kiosks, delivery points, chilled storage", "₹1.5–3.0 lakh per SHG / VO"),
+            2: ("Community RO water ATMs, farm tool hiring, solar crop dryers", "₹1.5–2.5 lakh per SHG / VO"),
+            3: ("Multi-utility village kiosks, solar lantern rental, cashew and forest-produce aggregation", "₹0.6–1.5 lakh per SHG"),
+            4: ("Solar mini dal and flour mills, feed kiosks, solar pump leasing", "₹1.0–2.0 lakh per SHG"),
+            5: ("Off-grid solar outlets, bio-sand water filters, mobile health and vet kits", "₹0.5–1.5 lakh per SHG")},
+    "aqu": {1: ("Shrimp sorting and deveining sheds, insulated ice boxes, fish pickles", "₹1.5–3.0 lakh per SHG"),
+            2: ("Fingerling nurseries, live fish vending", "₹1.0–2.5 lakh per SHG / VO"),
+            3: ("Minor-tank fish aggregation, fresh fish stalls", "₹0.5–1.5 lakh per SHG"),
+            4: ("Solar fish drying racks, dry-fish packing, ice boxes", "₹0.8–2.0 lakh per SHG"),
+            5: ("Not suited to aquaculture: the report suggests millets, poultry or goats instead",
+                "Not eligible for aquaculture grants")},
 }
 LAYERS = {**PILLARS, **BUSINESSES}
 
-# Draft weights for combining the four pillars per business (Low 1 · Medium 2 · High 3)
+# What each business needs from each pillar (used only for the infrastructure check, not for any score)
 WORD = {"Low": 1.0, "Low/Medium": 1.5, "Medium": 2.0, "Medium/High": 2.5, "High": 3.0}
 DRAFT = {
     "agr": dict(w={"wat": "High", "ele": "Medium", "con": "High", "mkt": "High"}, src="mid-review deck, slide 14"),
@@ -155,6 +192,18 @@ st.markdown("""
   .note {background:#f7f6f2; border-left:3px solid #bdbab1; padding:.5rem .75rem; border-radius:4px; font-size:.86rem; color:#55534d; margin:.4rem 0;}
   .draft {background:#fff6e5; border-left:3px solid #e3a008; padding:.55rem .8rem; border-radius:4px; font-size:.88rem; color:#5c4400; margin:.4rem 0;}
   div[data-testid="stMetricValue"] {font-size:1.35rem;}
+  .sq {font-size:18px; margin:1rem 0 .5rem 0; color:#22211f;}
+  .sbox {border:1px solid #d6d3cb; border-radius:10px; padding:.8rem 1rem; background:#fff; height:100%;
+         font-size:15px; color:#22211f;}
+  .sbox .sh {font-size:16px; font-weight:700;}
+  .sbox .sl {margin:.35rem 0 .55rem 0;}
+  .sbox .big {font-size:26px; font-weight:700;}
+  .sbox .sm, .sm {font-size:13px; color:#55534d;}
+  .sbox .kv {margin:.25rem 0; line-height:1.45;}
+  .bdg {display:inline-block; padding:2px 10px; border-radius:12px; font-weight:600; font-size:14px; white-space:nowrap;}
+  table.st {width:100%; border-collapse:collapse; font-size:14px;}
+  table.st th {text-align:left; color:#55534d; font-weight:600; border-bottom:1px solid #d6d3cb; padding:4px 6px;}
+  table.st td {border-bottom:1px solid #eeece6; padding:5px 6px; vertical-align:middle;}
 </style>""", unsafe_allow_html=True)
 
 
@@ -168,6 +217,15 @@ def tercile(pct):
 @st.cache_data
 def load():
     df = pd.read_csv(DATA / "mandals.csv")
+    for b, (f, sc) in COMPOSITE.items():
+        c = pd.read_csv(HERE / "source" / "integrated" / f)[["mandal_lgd", sc, "opportunity_zone_name"]]
+        c = c.rename(columns={sc: f"{b}_opp", "opportunity_zone_name": f"{b}_zone"})
+        assert c["mandal_lgd"].is_unique and c["mandal_lgd"].isin(df["mandal_lgd"]).all(), b
+        df = df.merge(c, on="mandal_lgd", how="left")
+        df[f"{b}_act"] = df[f"{b}_score"]            # the business team's own score (business data only)
+        df[f"{b}_score"] = df[f"{b}_opp"]            # the map and levels use the opportunity score
+        df[f"{b}_region"] = df[f"{b}_zone"]
+        df[f"{b}_zone_no"] = df[f"{b}_zone"].str.extract(r"Zone (\d)", expand=False).astype(float)
     for k, v in LAYERS.items():
         s = df[f"{k}_score"]
         df[f"{k}_pct"] = s.rank(pct=True) * 100
@@ -182,16 +240,6 @@ def load():
 
 DF, MANDAL_GEO, DISTRICT_GEO = load()
 N = {k: int(DF[f"{k}_score"].notna().sum()) for k in LAYERS}
-
-
-def draft_series(b, weights, allow_three):
-    P = DF[[f"{p}_pct" for p in PK]].to_numpy()
-    w = np.array([weights[p] for p in PK], dtype=float)
-    have = ~np.isnan(P)
-    den = (have * w).sum(axis=1)
-    score = np.where(den > 0, np.nansum(P * w, axis=1) / np.where(den == 0, 1, den), np.nan)
-    ok = have.all(axis=1) | (allow_three & have[:, [0, 2, 3]].all(axis=1) & ~have[:, 1])
-    return pd.Series(np.where(ok, score, np.nan), index=DF.index)
 
 
 def lvl(v):
@@ -216,8 +264,6 @@ def fmt_measure(kind, v, star=False):
     return f"{v:,.2f}" if abs(v) < 100 else f"{v:,.0f}"
 
 
-if "weights" not in st.session_state:
-    st.session_state.weights = {b: {p: WORD[x] for p, x in d["w"].items()} for b, d in DRAFT.items()}
 
 # ════════════════════════════════════════════════════════════════════════════
 # 3. SIDEBAR
@@ -228,7 +274,6 @@ with st.sidebar:
     section = st.radio("Section", ["Infrastructure pillars", "Business areas"],
                        captions=["Water, Electricity, Connectivity, Market access",
                                  "Agriculture, Livestock, Rural Services, Aquaculture"])
-    allow_three = False
     scope = "one"
     if section == "Infrastructure pillars":
         pick = st.selectbox("Pillar on the map", PK, index=None, placeholder="Select a pillar",
@@ -239,26 +284,12 @@ with st.sidebar:
         scope, layer = ("all", "con") if pick is None else ("one", pick)
         view = "team"
     else:
-        layer = st.selectbox("Business area", list(BUSINESSES), format_func=lambda k: BUSINESSES[k]["name"])
-        view = st.radio("Show", ["team", "draft"],
-                        format_func=lambda v: {"team": "Team's analysis", "draft": "Draft opportunity score"}[v],
-                        help="Team's analysis = the business team's own score. Draft opportunity score = the four "
-                             "pillars combined with draft weights for this business.")
-        if view == "draft":
-            with st.expander("Draft weights", expanded=False):
-                st.caption(f"Source: {DRAFT[layer]['src']}. Low = 1, Medium = 2, High = 3. Changes are not saved.")
-                for p in PK:
-                    st.session_state.weights[layer][p] = st.slider(
-                        PILLARS[p]["name"], 0.0, 3.0, float(st.session_state.weights[layer][p]), 0.5,
-                        key=f"w_{layer}_{p}", help=f"Default: {DRAFT[layer]['w'][p]}")
-                if st.button("Reset", use_container_width=True):
-                    st.session_state.weights[layer] = {p: WORD[x] for p, x in DRAFT[layer]["w"].items()}
-                    for p in PK:
-                        st.session_state.pop(f"w_{layer}_{p}", None)
-                    st.rerun()
-            allow_three = st.toggle("Also score mandals without Electricity", value=False,
-                                    help="Electricity covers 397 mandals. When on, the south is scored on the other "
-                                         "three pillars.")
+        pickb = st.selectbox("Business area", list(BUSINESSES), index=None, placeholder="Select a business area",
+                             format_func=lambda k: f"{BUSINESSES[k]['icon']}  {BUSINESSES[k]['name']}",
+                             help="Leave blank to see all four business areas together (the opening map). Pick one "
+                                  "to see its opportunity score on its own.")
+        scope, layer = ("all", "agr") if pickb is None else ("one", pickb)
+        view = "team"
     MODES = {
         "level": ("Level (High / Medium / Low)", "Compared with the whole state"),
         "dlevel": ("Level within the district", "Compared with mandals in the same district"),
@@ -266,11 +297,14 @@ with st.sidebar:
         "measure": ("A single measure", "One input to the score, e.g. canal coverage"),
         "best": ("Strongest pillar", "The pillar each mandal scores highest on"),
         "nhigh": ("Number of pillars at High (0–4)", "Overall infrastructure strength"),
+        "bbest": ("Strongest business area", "The business each mandal scores highest on"),
+        "bnhigh": ("Number of business areas at High (0–4)", "Overall business opportunity"),
         "weak": ("Weakest pillar (bottleneck)", "What is holding each mandal back"),
         "cover": ("Data coverage (0–4 pillars with data)", "Where data is missing"),
     }
     one = ["level", "score", "dlevel"] + (["measure"] if view == "team" and layer != "ele" and LAYERS[layer]["measures"] else [])
-    avail = one if scope == "one" else ["best", "nhigh", "weak", "cover"]
+    avail = one if scope == "one" else (["best", "nhigh", "weak", "cover"] if section == "Infrastructure pillars"
+                                        else ["bbest", "bnhigh"])
     colour_by = st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0],
                          captions=[MODES[m][1] for m in avail])
     measure_pick = None
@@ -299,16 +333,8 @@ with st.sidebar:
     st.caption("Grey on every map means **no data**, never a low score.")
 
 # Current layer
-if view == "draft":
-    DF["cur_score"] = draft_series(layer, st.session_state.weights[layer], allow_three)
-    META = dict(name=f"{BUSINESSES[layer]['name']}: draft opportunity score", score_kind="0-100",
-                score_label="Draft opportunity score (0–100)",
-                score_help="The four pillars, each as a percentile, combined with this business's draft weights.",
-                nodata="Not scored: a pillar is missing here (mostly Electricity in the south).", measures=[],
-                level_rule="Levels are thirds of the scored mandals.")
-else:
-    DF["cur_score"] = DF[f"{layer}_score"]
-    META = LAYERS[layer]
+DF["cur_score"] = DF[f"{layer}_score"]
+META = LAYERS[layer]
 DF["cur_pct"] = DF["cur_score"].rank(pct=True) * 100
 DF["cur_rk"] = DF["cur_score"].rank(ascending=False, method="min")
 DF["cur_lvl"] = DF["con_lvl"] if (view == "team" and layer == "con") else tercile(DF["cur_pct"])
@@ -342,6 +368,23 @@ def _strongest(r):
 
 
 DF["best"] = DF.apply(_strongest, axis=1)
+# Business areas read together: the same idea, using each business's opportunity score
+BK = list(BUSINESSES)
+for _b in BK:
+    DF[f"{_b}_t3"] = tercile(DF[f"{_b}_pct"])
+_bl = DF[[f"{b}_t3" for b in BK]]
+DF["b_data"] = _bl.notna().sum(axis=1)
+DF["b_high"] = (_bl == "High").sum(axis=1)
+
+
+def _strongest_biz(r):
+    highs = [b for b in BK if r[f"{b}_t3"] == "High"]
+    if not highs:
+        return "No business at High" if r["b_data"] > 0 else None
+    return BUSINESSES[max(highs, key=lambda b: r[f"{b}_pct"])]["name"]
+
+
+DF["bbest"] = DF.apply(_strongest_biz, axis=1)
 RG = f"{layer}_region" if (view == "team" and scope == "one") else None
 
 df = DF if not districts else DF[DF["district_name"].isin(districts)]
@@ -369,21 +412,36 @@ def select_mandal(lgd):
 # ════════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="eyebrow">Entrepreneurial Opportunity Zones · Andhra Pradesh · mandal level</div>',
             unsafe_allow_html=True)
-title = ("All four pillars together" if scope == "all" else
-         f"{PILLARS[layer]['icon']} {PILLARS[layer]['name']} — {PILLARS[layer]['question']}"
-         if section == "Infrastructure pillars" else META["name"])
+BIZ = section == "Business areas"
+if BIZ:
+    title = ("All four business areas together" if scope == "all"
+             else f"{BUSINESSES[layer]['icon']} {BUSINESSES[layer]['name']} — opportunity score")
+    sub = ("Agriculture, Livestock, Rural Services and Aquaculture read together, using each team's opportunity score."
+           if scope == "all" else META["score_help"])
+else:
+    title = ("All four pillars together" if scope == "all" else
+             f"{PILLARS[layer]['icon']} {PILLARS[layer]['name']} — {PILLARS[layer]['question']}")
+    sub = ("Water, Electricity, Connectivity and Market access read together for each mandal."
+           if scope == "all" else META["score_help"])
 st.markdown(f"## {title}")
-st.caption(f"{', '.join(districts) if districts else 'All of Andhra Pradesh'} · " +
-           ("Water, Electricity, Connectivity and Market access read together for each mandal."
-            if scope == "all" else META["score_help"]))
-if view == "draft":
-    wv = st.session_state.weights[layer]
-    st.markdown(f'<div class="draft"><b>Draft, not validated with SERP.</b> Weights: '
-                + " · ".join(f"{PILLARS[p]['name']} {wv[p]:g}" for p in PK)
-                + f" (source: {DRAFT[layer]['src']}).</div>", unsafe_allow_html=True)
+st.caption(f"{', '.join(districts) if districts else 'All of Andhra Pradesh'} · {sub}")
 
 cnt = scored["cur_lvl"].value_counts()
-if scope == "all":
+if scope == "all" and BIZ:
+    cols = st.columns(5)
+    cols[0].markdown(f'<div class="kpi"><div class="n">{len(df):,}</div><div class="l">Mandals in total<br>'
+                     f'<span style="opacity:.75">{int((df["b_data"] > 0).sum()):,} in the teams\' opportunity '
+                     f'models</span></div></div>', unsafe_allow_html=True)
+    for c, b in zip(cols[1:], BK):
+        n_hi = int((df[f"{b}_t3"] == "High").sum())
+        n_dat = int(df[f"{b}_t3"].notna().sum())
+        sw = f'<span class="sw" style="background:{LEVEL_COLOURS["High"]};border:1px solid #cfcdc6"></span>'
+        c.markdown(f'<div class="kpi"><div class="n">{n_hi:,}</div><div class="l">{sw}{BUSINESSES[b]["icon"]} '
+                   f'{BUSINESSES[b]["name"]}: High<br><span style="opacity:.75">of {n_dat:,} mandals scored</span>'
+                   f'</div></div>', unsafe_allow_html=True)
+    st.caption(f"High = top third of the mandals each team scored. {int((df['b_high'] == 4).sum()):,} mandals are "
+               "High on all four. Pick a business area in the sidebar for its High / Medium / Low split.")
+elif scope == "all":
     # Opening view: one figure per pillar, so no single pillar dominates the header
     cols = st.columns(5)
     n_any = int((df["n_data"] > 0).sum())
@@ -471,6 +529,13 @@ def hover(d):
     out = []
     for _, r in d.iterrows():
         t = f"<b>{r['mandal_name']}</b><br>{r['district_name']} district<br>"
+        if scope == "all" and BIZ:
+            t += (f"High on <b>{int(r['b_high'])} of 4</b> business areas" if r["b_data"] > 0
+                  else "<i>Not in the teams' opportunity models</i>")
+            if r["b_data"] > 0:
+                t += "<br>" + "<br>".join(f"{BUSINESSES[b]['name']}: {lvl(r[f'{b}_t3'])}" for b in BK)
+            out.append(t)
+            continue
         if scope == "all":
             t += (f"High on <b>{int(r['n_high'])} of {int(r['n_data'])}</b> pillars with data"
                   + (f" · weakest: <b>{r['weak']}</b>" if isinstance(r["weak"], str) else "") + "<br>"
@@ -483,7 +548,9 @@ def hover(d):
             t += (f"{META['score_label']}: <b>{fmt_score(META['score_kind'], r['cur_score'])}</b> "
                   f"(rank {int(r['cur_rk'])} of {N_CUR})<br>Level: <b>{r['cur_lvl']}</b>")
             if RG and isinstance(r[RG], str):
-                t += f"<br>Region: {r[RG]}"
+                t += f"<br>{'Zone' if BIZ else 'Region'}: {r[RG].replace('Zone ', '', 1) if BIZ else r[RG]}"
+            if BIZ and r["cur_rk"] <= 15:
+                t += "<br>★ Top 15 pilot mandal"
             if colour_by == "dlevel" and isinstance(r["cur_dlvl"], str):
                 t += f"<br>Within {r['district_name']}: <b>{r['cur_dlvl']}</b>"
         out.append(t)
@@ -547,6 +614,17 @@ def build_map(d):
         for w_, c_ in BEST.items():
             cat(d[d["best"] == w_], c_, w_ if w_.startswith("No") else f"Strongest: {w_}")
         cat(d[d["best"].isna()], NO_DATA, "No data")
+    elif colour_by == "bbest":
+        BB = {"Agriculture": "#3f8f29", "Livestock": "#9a5b1e", "Rural Services": "#8a5cc4",
+              "Aquaculture": "#1f9ec4", "No business at High": "#c9c2ae"}
+        for w_, c_ in BB.items():
+            cat(d[d["bbest"] == w_], c_, w_ if w_.startswith("No") else f"Strongest: {w_}")
+        cat(d[d["bbest"].isna()], NO_DATA, "Not in the teams' models")
+    elif colour_by == "bnhigh":
+        steps = {4: "#0d366b", 3: "#2a6fc4", 2: "#6da7ec", 1: "#b7d3f6", 0: "#eef4fc"}
+        for n_, c_ in steps.items():
+            cat(d[(d["b_high"] == n_) & (d["b_data"] > 0)], c_, f"{n_} of 4 business areas High")
+        cat(d[d["b_data"] == 0], NO_DATA, "Not in the teams' models")
     elif colour_by == "weak":
         WEAK = {"Water": "#2a78d6", "Electricity": "#eda100", "Connectivity": "#eb6834",
                 "Market access": "#8a5cc4", "No bottleneck": "#cde8d6"}
@@ -566,6 +644,15 @@ def build_map(d):
     fig.add_trace(go.Scattergeo(lon=lons, lat=lats, mode="lines", line=dict(color="#4a4843", width=0.8),
                                 hoverinfo="skip", showlegend=False))
     trace_lgd.append([])
+    if BIZ and scope == "one":
+        top = d[d["cur_rk"] <= 15]
+        if not top.empty:
+            pts = mandal_label_points().loc[top["mandal_lgd"].astype(int)]
+            fig.add_trace(go.Scattergeo(lon=pts["lab_lon"], lat=pts["lab_lat"], mode="markers",
+                                        marker=dict(symbol="star", size=13, color="#ffd23f",
+                                                    line=dict(color="#3b2f00", width=1)),
+                                        text=hover(top), hoverinfo="text", name="Top 15 pilot mandals"))
+            trace_lgd.append(top["mandal_lgd"].tolist())
     lab = district_label_points()
     if districts:
         lab = lab[lab["district"].isin(districts)]
@@ -584,8 +671,8 @@ def build_map(d):
         trace_lgd.append([])
     fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
     fig.update_layout(height=640, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
-                      legend=dict(x=0.01, y=0.02, xanchor="left", yanchor="bottom", bgcolor="rgba(255,255,255,0.9)",
-                                  bordercolor="#e3e1da", borderwidth=1, font=dict(size=11)),
+                      legend=dict(x=0.01, y=0.99, xanchor="left", yanchor="top", bgcolor="rgba(255,255,255,0.9)",
+                                  bordercolor="#e3e1da", borderwidth=1, font=dict(size=12)),
                       hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#cfcdc6"))
     return fig, trace_lgd
 
@@ -611,6 +698,113 @@ def pillar_card(r, p, selected):
             f'{body}{bar}<div class="s">{sub}</div></div>')
 
 
+NEED_RANK = {"High": 3, "Medium/High": 2.5, "Medium": 2, "Low/Medium": 1.5, "Low": 1}
+RESULT = {"meets": ("✓", "Meets", "#14632d"), "partly": ("~", "Partly", "#7a5000"),
+          "gap": ("✗", "Gap", "#a3241a"), "unknown": ("?", "Unknown", "#55534d")}
+
+
+def pillar_check(need, have):
+    """Agreed rule. Needed High (Medium/High counts as High): High meets, Medium partly, Low gap.
+    Needed Medium: High or Medium meets, Low partly. Needed Low: any level meets. No data: unknown."""
+    if not isinstance(have, str):
+        return "unknown"
+    n = NEED_RANK[need]
+    if n >= 2.5:
+        return {"High": "meets", "Medium": "partly", "Low": "gap"}[have]
+    if n >= 1.5:
+        return {"High": "meets", "Medium": "meets", "Low": "partly"}[have]
+    return "meets"
+
+
+def infra_verdict(r, b):
+    res = {p: pillar_check(DRAFT[b]["w"][p], r[f"{p}_lvl"]) for p in PK}
+    gaps = sum(v == "gap" for v in res.values())
+    unknown = sum(v == "unknown" for v in res.values())
+    verdict = "Suitable" if gaps == 0 else "Partly suitable" if gaps == 1 else "Not suitable"
+    return verdict, gaps, unknown, res
+
+
+VERDICT_STYLE = {"Suitable": ("✓", "#d8f0de", "#14532d"), "Partly suitable": ("~", "#fdf0c8", "#6b4a00"),
+                 "Not suitable": ("✗", "#fadbd8", "#7f1d1d")}
+LEVEL_BADGE = {"High": ("#dbe8fb", "#0d366b"), "Medium": ("#ecebe7", "#3b3a36"), "Low": ("#fadbd8", "#7f1d1d")}
+
+
+def badge(text, bg, fg):
+    return f'<span class="bdg" style="background:{bg};color:{fg}">{text}</span>'
+
+
+def verdict_badge(v):
+    ic, bg, fg = VERDICT_STYLE[v]
+    return badge(f"{ic} {v}", bg, fg)
+
+
+def suitability_band(r, b):
+    """Under the map: infrastructure check (left) and the team's opportunity score (right), side by side."""
+    v = BUSINESSES[b]
+    verdict, gaps, unknown, res = infra_verdict(r, b)
+    rows = []
+    for p in PK:
+        have = r[f"{p}_lvl"]
+        shown = (r["con_level"] if p == "con" else have) if isinstance(have, str) else "No data"
+        ic, word, col = RESULT[res[p]]
+        rows.append(f'<tr><td>{PILLARS[p]["name"]}</td><td>{DRAFT[b]["w"][p]}</td><td>{shown}</td>'
+                    f'<td style="color:{col};font-weight:700">{ic} {word}</td></tr>')
+    left_html = (
+        '<div class="sbox"><div class="sh">① Infrastructure check</div>'
+        f'<div class="sl">{verdict_badge(verdict)} <span class="sm">{gaps} gap{"s" if gaps != 1 else ""}'
+        + (f", {unknown} unknown" if unknown else "") + '</span></div>'
+        '<table class="st"><thead><tr><th scope="col">Pillar</th><th scope="col">Needs</th><th scope="col">Has</th>'
+        '<th scope="col">Result</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
+        f'<div class="sm" style="margin-top:.45rem">What the business needs: {DRAFT[b]["src"]} (not validated '
+        'with SERP).</div></div>')
+    if pd.notna(r[f"{b}_score"]):
+        zone_no = int(r[f"{b}_zone_no"])
+        ideas, support = ZONE_INFO[b][zone_no]
+        lbg, lfg = LEVEL_BADGE[r[f"{b}_lvl"]]
+        rank = int(r[f"{b}_rk"])
+        right_html = (
+            '<div class="sbox"><div class="sh">② Opportunity score <span class="sm">(team\'s model)</span></div>'
+            f'<div class="sl"><span class="big">{r[f"{b}_score"]:.0f}</span><span class="sm"> / 100 · rank {rank} '
+            f'of {N[b]}</span> {badge(r[f"{b}_lvl"], lbg, lfg)}'
+            + (f' {badge("★ Top 15 pilot mandal", "#fff3c4", "#5c4400")}' if rank <= 15 else "") + '</div>'
+            f'<div class="kv"><b>Zone {zone_no}:</b> {r[f"{b}_zone"].split(": ", 1)[-1]}</div>'
+            f'<div class="kv"><b>Possible SHG enterprises:</b> {ideas}</div>'
+            f'<div class="kv"><b>Support range:</b> {support}</div>'
+            f'<div class="sm" style="margin-top:.45rem">{v["score_help"]} Source: {v["source"]}.</div></div>')
+    else:
+        right_html = ('<div class="sbox"><div class="sh">② Opportunity score <span class="sm">(team\'s model)</span>'
+                      f'</div><div class="kv" style="margin-top:.45rem">{_OPP_NODATA}</div></div>')
+    st.markdown(f'<div class="sq">Is <b>{r["mandal_name"]}</b> suitable for <b>{v["name"]}</b>?</div>',
+                unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="medium")
+    c1.markdown(left_html, unsafe_allow_html=True)
+    c2.markdown(right_html, unsafe_allow_html=True)
+
+
+def all_business_lines(r):
+    """No business picked: one line per business area, strongest first."""
+    rows = []
+    for b in BK:
+        verdict, gaps, unknown, _ = infra_verdict(r, b)
+        has = pd.notna(r[f"{b}_score"])
+        lv_ = r[f"{b}_lvl"] if has else None
+        opp = (f'{r[f"{b}_score"]:.0f} / 100 {badge(lv_, *LEVEL_BADGE[lv_])}'
+               + (f' {badge("★ Top 15", "#fff3c4", "#5c4400")}' if r[f"{b}_rk"] <= 15 else "")) if has \
+            else '<span class="sm">Not in the team\'s model</span>'
+        zone = r[f"{b}_zone"].split(": ", 1)[-1] if has else "—"
+        key = ({"High": 0, "Medium": 1, "Low": 2}.get(lv_, 3), -(r[f"{b}_score"] if has else -1))
+        rows.append((key, f'<tr><td><b>{BUSINESSES[b]["icon"]} {BUSINESSES[b]["name"]}</b></td>'
+                          f'<td>{verdict_badge(verdict)}</td><td>{opp}</td><td>{zone}</td></tr>'))
+    rows.sort(key=lambda x: x[0])
+    st.markdown(f'<div class="sq">Which business areas suit <b>{r["mandal_name"]}</b>?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sbox"><table class="st"><thead><tr><th scope="col">Business area</th>'
+                '<th scope="col">① Infrastructure check</th><th scope="col">② Opportunity score</th>'
+                '<th scope="col">Zone</th></tr></thead><tbody>' + "".join(x[1] for x in rows) + '</tbody></table>'
+                '<div class="sm" style="margin-top:.45rem">Strongest first. Pick a business area in the sidebar for '
+                'the full explanation, possible SHG enterprises and support range.</div></div>',
+                unsafe_allow_html=True)
+
+
 def profile(lgd):
     r = DF[DF["mandal_lgd"] == lgd].iloc[0]
     st.markdown(f'<div class="eyebrow">{r["district_name"]} district · {r["revenue_division"]} division · '
@@ -627,9 +821,16 @@ def profile(lgd):
     st.caption(f"High on {n_high}, Low on {n_low}" + (f", no data on {n_nd}" if n_nd else "") + " of 4 pillars.")
 
     if scope == "all":
-        st.caption("Pick a pillar under **Pillar on the map** to see that pillar's measures for this mandal.")
+        st.caption("Pick a business area in the sidebar to see its details for this mandal." if BIZ else
+                   "Pick a pillar under **Pillar on the map** to see that pillar's measures for this mandal.")
     else:
-        st.markdown(f"**{META['name'] if section == 'Business areas' else PILLARS[layer]['name']}: details**")
+        from contextlib import nullcontext
+        # Business areas: the details fold away so the suitability answer sits right under the map
+        holder = st.expander(f"{BUSINESSES[layer]['name']}: score details and business activity measures") \
+            if BIZ else nullcontext()
+        holder.__enter__()
+        if not BIZ:
+            st.markdown(f"**{PILLARS[layer]['name']}: details**")
         if pd.isna(r["cur_score"]):
             st.markdown(f'<div class="note">{nodata_reason(r)}</div>', unsafe_allow_html=True)
         else:
@@ -638,7 +839,8 @@ def profile(lgd):
             m2.metric("Rank", f"{int(r['cur_rk'])} of {N_CUR}")
             m3.metric("Level", r["cur_lvl"], help=META.get("level_rule", "Thirds of the scored mandals."))
             if RG and isinstance(r[RG], str):
-                st.markdown(f'<div class="muted">Region: <b>{r[RG]}</b></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="muted">{"Opportunity zone" if BIZ else "Region"}: <b>{r[RG]}</b></div>',
+                            unsafe_allow_html=True)
             if META["measures"]:
                 mt = pd.DataFrame([{"Measure": lbl,
                                     "Value": fmt_measure(kind, r[f"{layer}_{col}"], r["con_city"] and col == "C5"),
@@ -647,28 +849,36 @@ def profile(lgd):
                 st.dataframe(mt, hide_index=True, use_container_width=True,
                              column_config={"Percentile": st.column_config.ProgressColumn(min_value=0, max_value=100,
                                                                                           format="%d")})
-            if view == "draft" and pd.isna(r["ele_pct"]):
-                st.markdown('<div class="draft">Scored on three pillars: no electricity data here.</div>',
-                            unsafe_allow_html=True)
-        if view == "team" and layer == "con" and r["con_city"]:
+        if BIZ and pd.isna(r["cur_score"]) and META["measures"]:
+            # Outside the opportunity model, the business team's own measures may still exist
+            mt = pd.DataFrame([{"Measure": lbl, "Value": fmt_measure(kind, r[f"{layer}_{col}"]),
+                                "Percentile": None if pd.isna(r[f"{layer}_{col}_pct"]) else round(r[f"{layer}_{col}_pct"])}
+                               for col, lbl, kind in META["measures"]])
+            st.dataframe(mt, hide_index=True, use_container_width=True,
+                         column_config={"Percentile": st.column_config.ProgressColumn(min_value=0, max_value=100,
+                                                                                      format="%d")})
+        if layer == "con" and r["con_city"]:
             st.markdown('<div class="note">City mandal: village access and bus service assumed 100%; road condition '
                         '(*) is the district median.</div>', unsafe_allow_html=True)
+        holder.__exit__(None, None, None)
 
+    if BIZ:
+        return
     with st.expander("Recommended Business Areas for this Mandal"):
         rows = []
         order = {"High": 0, "Medium": 1, "Low": 2}
         for b, v in BUSINESSES.items():
-            ds = draft_series(b, st.session_state.weights[b], allow_three)
             lv_ = r[f"{b}_lvl"]
+            verdict = infra_verdict(r, b)[0]
             rows.append({"Business": ("★ " if lv_ == "High" else "") + v["name"],
-                         "Team level": lvl(lv_),
-                         "Team's score": fmt_score(v["score_kind"], r[f"{b}_score"]),
-                         "Draft opportunity": "no data" if pd.isna(ds.loc[r.name]) else f"{ds.loc[r.name]:.0f}",
+                         "Opportunity level": lvl(lv_),
+                         "Opportunity score": fmt_score("0-100", r[f"{b}_score"]),
+                         "Infrastructure check": verdict,
                          "_o": order.get(lv_, 3), "_p": -(r[f"{b}_pct"] if pd.notna(r[f"{b}_pct"]) else -1)})
         tb = pd.DataFrame(rows).sort_values(["_o", "_p"]).drop(columns=["_o", "_p"])
         st.dataframe(tb, hide_index=True, use_container_width=True)
-        st.caption("Sorted from the strongest level down. ★ = High (top third of the state) for this mandal. "
-                   "Levels come from each business team's own analysis.")
+        st.caption("Sorted from the strongest level down. ★ = High (top third) on the team's opportunity score. "
+                   "Pick Business areas in the sidebar for the full explanation.")
 
 
 def clicked_lgd(ev, tl):
@@ -779,6 +989,13 @@ with tabs[0]:
                        "(one legend, top left, for all four). "
                        f"{r0['mandal_name']} is outlined in black. Click another mandal to switch to it.")
         else:
+            if sel_lgd is not None:
+                # What is selected, and the way back, above the map (same as the four-pillar view)
+                r0 = DF[DF["mandal_lgd"] == sel_lgd].iloc[0]
+                h1, h2 = st.columns([2.3, 1.7])
+                h1.markdown(f"**{r0['mandal_name']}** · {r0['district_name']} district · outlined on the map")
+                if h2.button("↩ Back to the state map", use_container_width=True, key="back_single"):
+                    select_mandal(None)
             fig, trace_lgd = build_map(df)
             ev = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points",
                                  key=f"map_{st.session_state.map_ver}", config=MAP_CONFIG)
@@ -793,14 +1010,21 @@ with tabs[0]:
                 "nhigh": "How many of the four pillars each mandal is High on (top third). Mandals missing a pillar can't reach 4.",
                 "weak": "The pillar each mandal does worst on, among pillars in the bottom third. Light green = no bottleneck. Only pillars with data are compared.",
                 "cover": "How many of the four pillars have data for each mandal. Darker = more complete.",
+                "bbest": "Each mandal is coloured by the business area it scores highest on, among those where it is in "
+                         "the top third (High) of the team's opportunity score. Taupe = High on none. Grey = outside "
+                         "the teams' models (323 mandals with all four pillars).",
+                "bnhigh": "How many of the four business areas each mandal is High on (top third of the opportunity "
+                          "score). Grey = outside the teams' models.",
             }
+            if BIZ and scope == "one":
+                MODE_NOTE["level"] = ("★ = the team's top 15 pilot mandals. Grey = outside the team's model "
+                                      "(323 mandals with all four pillars), not a low score.")
             if colour_by in MODE_NOTE:
                 st.caption(MODE_NOTE[colour_by])
-            st.caption("Hover for details · **click a mandal** to see it on all four pillars · click a legend "
-                       "item to hide it.")
-            if sel_lgd is not None:
-                if st.button("Clear the selected mandal"):
-                    select_mandal(None)
+            st.caption("Hover for details · **click a mandal** to "
+                       + (("see which business areas suit it" if scope == "all" else "see whether it suits this business")
+                          if BIZ else "see it on all four pillars")
+                       + " · click a legend item to hide it.")
     with right:
         # In the four-pillar view the filter holds only the selected district; still let any mandal be searched
         opts = (DF if four_view else df).sort_values(["district_name", "mandal_name"])
@@ -813,10 +1037,19 @@ with tabs[0]:
             select_mandal(lgds[labels.index(chosen)])
         if sel_lgd is None:
             st.markdown('<div class="card"><h4>Select a mandal</h4>Click a mandal on the map or type its name above. '
-                        'The map will then show it on all four pillars, side by side, and its profile appears here.'
-                        '</div>', unsafe_allow_html=True)
+                        + ("Its profile appears here, and under the map you will see whether it suits "
+                           + ("this business area." if scope == "one" else "each business area.") if BIZ else
+                           "The map will then show it on all four pillars, side by side, and its profile appears here.")
+                        + '</div>', unsafe_allow_html=True)
         else:
             profile(sel_lgd)
+    if sel_lgd is not None and BIZ:
+        # Full width under the map, the two answers side by side
+        _r = DF[DF["mandal_lgd"] == sel_lgd].iloc[0]
+        if scope == "one":
+            suitability_band(_r, layer)
+        else:
+            all_business_lines(_r)
 
 # ════════════════════════════════════════════════════════════════════════════
 # 6. COMPARE
@@ -831,7 +1064,7 @@ with tabs[1]:
         [x for x in DF.sort_values("agr_rk")["mandal_lgd"] if x != _sel][:3 - (1 if _sel is not None else 0)]
     picked = st.multiselect("Mandals", pool["mandal_lgd"].tolist(), default=default, max_selections=5,
                             format_func=lambda x: lab.get(x, str(x)))
-    with_biz = st.checkbox("Also show the four business areas (team scores)", value=False)
+    with_biz = st.checkbox("Also show the four business areas (opportunity scores)", value=False)
     keys = PK + (list(BUSINESSES) if with_biz else [])
     if picked:
         COLS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
@@ -889,7 +1122,7 @@ with tabs[2]:
     c1.download_button("⬇ This table (CSV)", out.to_csv(index=False).encode("utf-8-sig"), "eoz_pillars.csv",
                        "text/csv", use_container_width=True)
     full = DF[["mandal_lgd", "mandal_name", "district_name"] +
-              [f"{k}_{s}" for k in LAYERS for s in ("score", "lvl", "region")]]
+              [f"{k}_{s}" for k in LAYERS for s in ("score", "lvl", "region")] + [f"{b}_act" for b in BK]]
     c2.download_button("⬇ Pillars + business areas (CSV)", full.to_csv(index=False).encode("utf-8-sig"),
                        "eoz_all_layers.csv", "text/csv", use_container_width=True)
 
@@ -898,8 +1131,36 @@ with tabs[2]:
 # ════════════════════════════════════════════════════════════════════════════
 with tabs[3]:
     if not RG:
-        st.info("Regions belong to one pillar or one business area's own analysis. Pick a pillar under **Pillar on the map**, or a "
-                "business area's **Team's analysis**, to see them.")
+        st.info("Regions belong to one pillar or one business area. Pick a pillar under **Pillar on the map**, or a "
+                "**Business area**, to see them.")
+    elif BIZ:
+        b = layer
+        st.markdown(f"#### {BUSINESSES[b]['name']}: opportunity zones from the team's model")
+        st.caption("Five zones per business from the Integrated clustering reports, ordered by zone number. "
+                   "Possible SHG enterprises and support ranges are the reports' suggestions.")
+        Z = (DF[DF[f"{b}_score"].notna()].groupby(f"{b}_zone_no")
+             .agg(Zone=(f"{b}_zone", "first"), Mandals=("mandal_lgd", "size"), Median=(f"{b}_score", "median"),
+                  Districts=("district_name", lambda s: ", ".join(s.value_counts().index[:3])))
+             .reset_index())
+        Z["Possible SHG enterprises"] = [ZONE_INFO[b][int(z)][0] for z in Z[f"{b}_zone_no"]]
+        Z["Support range"] = [ZONE_INFO[b][int(z)][1] for z in Z[f"{b}_zone_no"]]
+        Z["Median score"] = Z["Median"].round()
+        # An HTML table so the long texts wrap instead of being cut off
+        st.markdown('<div class="sbox"><table class="st"><thead><tr><th scope="col">Zone</th><th scope="col">Mandals</th>'
+                    '<th scope="col">Median score</th><th scope="col">Possible SHG enterprises</th>'
+                    '<th scope="col">Support range</th><th scope="col">Main districts</th></tr></thead><tbody>'
+                    + "".join(f'<tr><td><b>{z["Zone"]}</b></td><td>{z["Mandals"]}</td><td>{z["Median score"]:.0f}</td>'
+                              f'<td>{z["Possible SHG enterprises"]}</td><td>{z["Support range"]}</td>'
+                              f'<td>{z["Districts"]}</td></tr>' for _, z in Z.iterrows())
+                    + '</tbody></table></div>', unsafe_allow_html=True)
+        st.markdown(f"#### Top 15 pilot mandals for {BUSINESSES[b]['name']}")
+        T = DF[DF[f"{b}_rk"] <= 15].sort_values(f"{b}_rk")
+        st.dataframe(pd.DataFrame({"Rank": T[f"{b}_rk"].astype(int), "Mandal": T["mandal_name"],
+                                   "District": T["district_name"], "Opportunity score": T[f"{b}_score"].round(1),
+                                   "Zone": T[f"{b}_zone"]}), hide_index=True, use_container_width=True,
+                     height=36 * (len(T) + 1) + 3)
+        st.caption(f"{N[b]} mandals are in the team's model; {len(DF) - N[b]} are outside it (no data on all four "
+                   "pillars), shown grey on the map.")
     else:
         st.markdown(f"#### {LAYERS[layer]['name']}: regions from the team's analysis")
         st.caption("Ordered by median score. Region borders are approximate; use each mandal's own score for local "
@@ -932,16 +1193,24 @@ with tabs[4]:
             "where it is strong and where it lags.\n"
             "- **Levels:** Connectivity uses the levels in its report. The other pillars split their scored "
             "mandals into thirds, so High means the top third of mandals with data.\n"
-            "- **Business areas:** Agriculture, Livestock, Rural Services and Aquaculture, each with the team's own "
-            "analysis and a **draft opportunity score** that combines the four pillars with draft weights.")
+            "- **Business areas:** Agriculture, Livestock, Rural Services and Aquaculture. The map shows each team's "
+            "**opportunity score** (0–100): the business's own data combined with the infrastructure pillars, "
+            "weighted equally (Integrated clustering reports). Selecting a mandal shows an **infrastructure "
+            "check** (what the business needs against what the mandal has) next to the opportunity score, its zone, "
+            "possible SHG enterprises and support range.\n"
+            "- **Business activity score:** each business team's earlier score from business data only (679 "
+            "mandals). It is under *A single measure* and in each mandal's details.")
         st.markdown("#### Layers and sources")
         st.dataframe(pd.DataFrame([{"Layer": v["name"], "Type": "Pillar" if k in PILLARS else "Business area",
                                     "Mandals with data": N[k], "Score": v["score_label"], "Source": v["source"]}
                                    for k, v in LAYERS.items()]), hide_index=True, use_container_width=True)
-        st.markdown("#### Draft weights (Low 1 · Medium 2 · High 3)")
+        st.markdown("#### What each business needs (used for the infrastructure check)")
         st.dataframe(pd.DataFrame([{"Business": BUSINESSES[b]["name"],
                                     **{PILLARS[p]["name"]: d["w"][p] for p in PK}, "Source": d["src"]}
                                    for b, d in DRAFT.items()]), hide_index=True, use_container_width=True)
+        st.caption("Rule: needed High (Medium/High counts as High) — High meets, Medium partly, Low gap. Needed "
+                   "Medium — Low is partly. Needed Low — any level meets. No data — unknown. Verdict: no gaps = "
+                   "Suitable, 1 gap = Partly suitable, 2 or more = Not suitable.")
     with b:
         st.markdown("#### Limitations")
         st.markdown(
@@ -955,8 +1224,11 @@ with tabs[4]:
             "mandals sit in an Average region (and a few strong ones in a weaker region); check the mandal's own score "
             "and rank.\n"
             "- **Each team uses its own scale.** Compare pillars by level or percentile, not raw score.\n"
-            "- **Draft opportunity scores** cover 323 mandals (all four pillars) unless scoring without "
-            "Electricity is switched on. The weights are not validated with SERP.\n"
+            "- **Opportunity scores** cover 323 mandals (those with all four pillars); the rest, mostly in the "
+            "south where Electricity data is missing, are grey on the business maps. Rural Services and "
+            "Aquaculture do not use the Market access pillar.\n"
+            "- **What each business needs** (for the infrastructure check) comes from the mid-review deck; "
+            "Aquaculture's ratings are Claude's suggestion. None are validated with SERP.\n"
             "- **Livestock, Rural Services and Aquaculture** files have no LGD codes; they were matched by name "
             "(611 exact, 68 spelling variants).")
         st.markdown("#### Caveats by layer")
