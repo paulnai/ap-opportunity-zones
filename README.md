@@ -43,6 +43,11 @@ fills in with the mandal's district; **Back to the state map** restores what the
 cards on the right give the exact scores and ranks, and **Recommended Business Areas for this Mandal** lists the
 four business areas from the strongest level down (★ = High).
 
+**Compare mandals.** Pick up to five mandals, then *Compare on*: **Infrastructure pillars** (the four pillars only,
+in blue), **Business areas** (the four opportunity scores only, in orange) or **Choose my own** (tick any mix of the
+eight on one line; pillars stay blue and business areas orange). Each group of bars is one mandal; the table below
+shows level · score for the same choice, with blue rows for pillars and orange rows for business areas.
+
 **Levels.** Connectivity keeps the levels from its report (Well connected, Average, Poorly connected). The other
 pillars split their scored mandals into thirds: High is the top third of mandals with data.
 

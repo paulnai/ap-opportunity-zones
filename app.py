@@ -1161,9 +1161,13 @@ with tabs[0]:
 # ════════════════════════════════════════════════════════════════════════════
 # 6. COMPARE
 # ════════════════════════════════════════════════════════════════════════════
+# Two colour families so pillars and business areas are never confused: blues = pillars, oranges = business areas
+P_COL = {"con": "#0d366b", "ele": "#2a6fc4", "wat": "#5598e7", "mkt": "#9ec5f4"}
+B_COL = {"agr": "#7a3e00", "liv": "#c25e0a", "ser": "#ec9230", "aqu": "#f7c784"}
+ROW_TINT = {"Infrastructure pillar": "#e8f0fb", "Business area": "#fdf0de"}
+
 with tabs[1]:
-    st.markdown("#### Compare up to five mandals across the four pillars")
-    st.caption("Bars are percentiles (100 = best among mandals with data). A missing bar means no data.")
+    st.markdown("#### Compare up to five mandals")
     pool = DF.sort_values(["district_name", "mandal_name"])
     lab = dict(zip(pool["mandal_lgd"], pool["label"]))
     _sel = st.session_state.mandal_lgd
@@ -1171,34 +1175,72 @@ with tabs[1]:
         [x for x in DF.sort_values("agr_rk")["mandal_lgd"] if x != _sel][:3 - (1 if _sel is not None else 0)]
     picked = st.multiselect("Mandals", pool["mandal_lgd"].tolist(), default=default, max_selections=5,
                             format_func=lambda x: lab.get(x, str(x)))
-    with_biz = st.checkbox("Also show the four business areas (opportunity scores)", value=False)
-    keys = PK + (list(BUSINESSES) if with_biz else [])
-    if picked:
-        COLS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+    cmode = st.radio("Compare on", ["Infrastructure pillars", "Business areas", "Choose my own"], horizontal=True,
+                     index=1 if BIZ else 0, key="cmp_mode",
+                     help="Pillars and business areas are compared separately. 'Choose my own' lets you pick from both; "
+                          "pillars are then shown in blue and business areas in orange.")
+    if cmode == "Infrastructure pillars":
+        keys = list(PK)
+    elif cmode == "Business areas":
+        keys = list(BK)
+    else:
+        # All eight on one line, right under the radio: four pillars (blue) then four business areas (orange)
+        g1, g2 = st.columns(2)
+        g1.markdown("<div class='sm'><b style='color:#2a6fc4'>■ Infrastructure pillars</b></div>", unsafe_allow_html=True)
+        g2.markdown("<div class='sm'><b style='color:#c25e0a'>■ Business areas</b></div>", unsafe_allow_html=True)
+        cb = st.columns(8, gap="small")
+        keys = [p for i, p in enumerate(PK) if cb[i].checkbox(PILLARS[p]["name"], value=p in ("con", "wat"), key=f"cmp_{p}")] + \
+               [b for i, b in enumerate(BK) if cb[4 + i].checkbox(BUSINESSES[b]["name"], value=b in ("agr", "liv"), key=f"cmp_{b}")]
+    if not picked:
+        st.info("Pick at least one mandal to compare.")
+    elif not keys:
+        st.info("Tick at least one pillar or business area.")
+    else:
         sub = DF.set_index("mandal_lgd").loc[picked]
+        names = [lab[l].replace(" (", "<br>(") for l in picked]
         fig = go.Figure()
-        for i, (lgd, r) in enumerate(sub.iterrows()):
-            fig.add_trace(go.Bar(x=[LAYERS[k]["name"] for k in keys], y=[r[f"{k}_pct"] for k in keys], name=lab[lgd],
-                                 marker_color=COLS[i], marker_line_color="white", marker_line_width=2,
-                                 customdata=[f"{fmt_score(LAYERS[k]['score_kind'], r[f'{k}_score'])} · "
-                                             f"{lvl(r[f'{k}_lvl'])}" for k in keys],
-                                 hovertemplate="<b>" + lab[lgd] + "</b><br>%{x}: %{customdata}<br>Percentile %{y:.0f}<extra></extra>"))
+        for k in keys:
+            isp = k in PILLARS
+            v = LAYERS[k]
+            fig.add_trace(go.Bar(
+                x=names, y=[sub.loc[l, f"{k}_pct"] for l in picked], name=v["name"],
+                marker_color=(P_COL if isp else B_COL)[k], marker_line_color="white", marker_line_width=1.5,
+                legendgroup="p" if isp else "b",
+                legendgrouptitle_text=("Infrastructure pillars" if isp else "Business areas (opportunity score)")
+                if k == next(x for x in keys if (x in PILLARS) == isp) else None,
+                customdata=[[v["name"], fmt_score(v["score_kind"], sub.loc[l, f"{k}_score"]),
+                             (sub.loc[l, "con_level"] if k == "con" and isinstance(sub.loc[l, "con_lvl"], str)
+                              else lvl(sub.loc[l, f"{k}_lvl"]))] for l in picked],
+                hovertemplate="<b>%{x}</b><br>%{customdata[0]}: %{customdata[2]} (score %{customdata[1]})"
+                              "<br>Percentile %{y:.0f}<extra></extra>"))
         for y in (100 / 3, 200 / 3):
             fig.add_hline(y=y, line_dash="dot", line_color="#cfccc4")
-        fig.update_layout(barmode="group", height=380, margin=dict(l=0, r=0, t=10, b=0), barcornerradius=4, bargap=0.22,
-                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        fig.update_layout(barmode="group", height=400, margin=dict(l=0, r=0, t=10, b=0), barcornerradius=3,
+                          bargap=0.25, bargroupgap=0.06, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                           yaxis=dict(range=[0, 104], title="Percentile (higher = better)", gridcolor="rgba(0,0,0,0)",
-                                     tickvals=[0, 33, 67, 100], tickfont=dict(size=10, color=MUTED)),
+                                     tickvals=[0, 33, 67, 100], tickfont=dict(size=11, color=MUTED)),
                           xaxis=dict(tickfont=dict(size=12, color=INK2)),
-                          legend=dict(orientation="h", y=1.12, x=0, font=dict(size=11)))
+                          legend=dict(orientation="v", x=1.01, y=1, font=dict(size=12), groupclick="toggleitem"),
+                          hoverlabel=dict(bgcolor="white", font=dict(size=13, color="#22211f"), bordercolor="#cfcdc6"))
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        st.caption("Dotted lines mark the Low / Medium / High thirds.")
-        tbl = pd.DataFrame({"": [LAYERS[k]["name"] for k in keys]})
-        for lgd, r in sub.iterrows():
-            tbl[lab[lgd]] = [(r["con_level"] if k == "con" and isinstance(r[f"{k}_lvl"], str) else lvl(r[f"{k}_lvl"]))
-                             + ("" if pd.isna(r[f"{k}_score"]) else f" · {fmt_score(LAYERS[k]['score_kind'], r[f'{k}_score'])}")
-                             for k in keys]
-        st.dataframe(tbl, hide_index=True, use_container_width=True)
+        st.caption("Each group of bars is one mandal. Bars are percentiles (100 = best among mandals with data); dotted "
+                   "lines mark the Low / Medium / High thirds. A missing bar means data not available"
+                   + (" (business areas cover the 323 mandals the teams scored)." if any(k in BK for k in keys) else "."))
+        rows = []
+        for k in keys:
+            isp = k in PILLARS
+            row = {"Group": "Infrastructure pillar" if isp else "Business area", "Compared on": LAYERS[k]["name"]}
+            for l in picked:
+                r = sub.loc[l]
+                lv_ = (r["con_level"] if k == "con" and isinstance(r["con_lvl"], str) else lvl(r[f"{k}_lvl"]))
+                row[lab[l]] = "Data not available" if lv_ == "no data" else \
+                    f"{lv_} · {fmt_score(LAYERS[k]['score_kind'], r[f'{k}_score'])}"
+            rows.append(row)
+        tbl = pd.DataFrame(rows)
+        sty = tbl.style.apply(lambda r: [f"background-color: {ROW_TINT[r['Group']]}"] * len(r), axis=1)
+        st.dataframe(sty, hide_index=True, use_container_width=True)
+        st.caption("Each cell: level · score. Blue rows = infrastructure pillars (team scores); orange rows = business "
+                   "areas (team opportunity scores, 0–100).")
 
 # ════════════════════════════════════════════════════════════════════════════
 # 7. ALL MANDALS
