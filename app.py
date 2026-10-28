@@ -359,7 +359,7 @@ with st.sidebar:
         "cover": ("Data coverage (0–4 pillars with data)", "Where data is missing"),
     }
     one = ["level", "region", "dlevel"] + (["measure"] if LAYERS[layer]["measures"] else [])
-    avail = one if scope == "one" else (["best", "nhigh", "weak", "cover"] if section == "Infrastructure pillars"
+    avail = one if scope == "one" else (["best", "nhigh", "weak"] if section == "Infrastructure pillars"
                                         else ["bbest", "bnhigh"])
     if section == "Overview":
         colour_by = "level"
@@ -376,10 +376,8 @@ with st.sidebar:
         ms = LAYERS[layer]["measures"]
         measure_pick = st.selectbox("Measure", range(len(ms)), format_func=lambda i: ms[i][1])
     st.divider()
-    # Infrastructure: Districts sits in the right-hand column, next to Find a mandal. Elsewhere it stays here.
-    if section == "Business areas":
-        districts = district_box()
-    elif section == "Infrastructure pillars":
+    # Both sections: Districts sits in the right-hand column, next to Find a mandal
+    if section in ("Infrastructure pillars", "Business areas"):
         districts = list(_ss.districts_ms)     # drawn in the right-hand column, next to Find a mandal
     else:
         districts = []                         # the opening overview is always the whole state
@@ -483,7 +481,7 @@ if st.session_state.mandal_lgd is not None and st.session_state.mandal_lgd not i
 
 def select_mandal(lgd):
     st.session_state.mandal_lgd = None if lgd is None else int(lgd)
-    if lgd is not None and section == "Infrastructure pillars":
+    if lgd is not None and section != "Overview":
         st.session_state.pending_district = DF.loc[DF["mandal_lgd"] == int(lgd), "district_name"].iloc[0]
     st.session_state.map_ver += 1
     st.rerun()
@@ -1317,41 +1315,25 @@ with tabs[0]:
                           if BIZ else "open it on all four pillars")
                        + " · click a legend item to hide it.")
     with right:
-        if BIZ:
-            # Business areas: unchanged (Districts stays in the sidebar; any mandal can be searched)
-            opts = df.sort_values(["district_name", "mandal_name"])
-            labels, lgds = opts["label"].tolist(), opts["mandal_lgd"].tolist()
-            cur = lgds.index(sel_lgd) if sel_lgd in lgds else None
-            chosen = st.selectbox("Find a mandal", labels, index=cur, placeholder="Type a mandal name…",
-                                  help="Type to search, or click a mandal on the map.",
-                                  key=f"find_{st.session_state.map_ver}")
-            if chosen is not None and lgds[labels.index(chosen)] != sel_lgd:
-                select_mandal(lgds[labels.index(chosen)])
-        else:
-            # Infrastructure: Districts first; Find a mandal then lists only that district's mandals
-            dcol, fcol = st.columns(2, gap="small")
-            with dcol:
-                district_box()
-            with fcol:
-                if districts:
-                    pool = DF[DF["district_name"].isin(districts)].sort_values(["district_name", "mandal_name"])
-                    fopts = pool["mandal_lgd"].tolist()
-                    flab = dict(zip(pool["mandal_lgd"], pool["mandal_name"] if len(districts) == 1 else pool["label"]))
-                    fk = f"find_{st.session_state.map_ver}"
-                    if fk not in st.session_state:          # index=None keeps the clear (×) button
-                        st.session_state[fk] = sel_lgd if sel_lgd in fopts else None
-                    fpick = st.selectbox("Find a mandal", fopts, index=None, key=fk, format_func=lambda x: flab[x],
-                                         placeholder="Select a mandal",
-                                         help="Only the mandals of the districts picked. Clear it (×) to go back "
-                                              "to the district map.")
-                    if fpick != sel_lgd and (fpick is not None or sel_lgd in fopts):
-                        select_mandal(fpick)
-        if sel_lgd is None and BIZ:
-            st.markdown('<div class="card"><h4>Select a mandal</h4>Click a mandal on the map or type its name above. '
-                        'Its profile appears here, and under the map you will see whether it suits '
-                        + ("this business area." if scope == "one" else "each business area.") + '</div>',
-                        unsafe_allow_html=True)
-        elif sel_lgd is not None:
+        # Both sections: Districts first; Find a mandal then lists only that district's mandals
+        dcol, fcol = st.columns(2, gap="small")
+        with dcol:
+            district_box()
+        with fcol:
+            if districts:
+                pool = DF[DF["district_name"].isin(districts)].sort_values(["district_name", "mandal_name"])
+                fopts = pool["mandal_lgd"].tolist()
+                flab = dict(zip(pool["mandal_lgd"], pool["mandal_name"] if len(districts) == 1 else pool["label"]))
+                fk = f"find_{st.session_state.map_ver}"
+                if fk not in st.session_state:          # index=None keeps the clear (×) button
+                    st.session_state[fk] = sel_lgd if sel_lgd in fopts else None
+                fpick = st.selectbox("Find a mandal", fopts, index=None, key=fk, format_func=lambda x: flab[x],
+                                     placeholder="Select a mandal",
+                                     help="Only the mandals of the districts picked. Clear it (×) to go back "
+                                          "to the district map.")
+                if fpick != sel_lgd and (fpick is not None or sel_lgd in fopts):
+                    select_mandal(fpick)
+        if sel_lgd is not None:
             profile(sel_lgd)
     if sel_lgd is not None and BIZ:
         # Full width under the map, the two answers side by side

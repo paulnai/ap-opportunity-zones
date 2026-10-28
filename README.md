@@ -31,14 +31,14 @@ each mandal is coloured by its **strongest pillar** (Water blue, Electricity amb
 access purple), among the pillars where it is in the top third; pale = High on no pillar. Pillars are compared only across the
 323 mandals with data on all four, ranked among themselves; other mandals are grey. The figures at the top give
 the total number of mandals, then for each pillar the number at High out of those 323.
-*Colour the map by* can also show Number of pillars at High (0–4), Weakest pillar or Data coverage.
+*Colour the map by* can also show How many pillars are strong or Weakest pillar.
 
 **Pillar on the map.** Pick Connectivity, Electricity, Water or Market access from the drop-down to see one
 pillar on its own; clear it to return to the opening view. Colour by Level (High / Medium / Low), Regions (the pillar's spatially
 constrained clusters), Level within the district, or A single measure (Electricity's come from
 `source/electricity_geo_axis.csv`).
 
-**Districts and Find a mandal (Infrastructure).** Both sit in the right-hand column. Pick one or more districts;
+**Districts and Find a mandal (both sections).** Both sit in the right-hand column, in Infrastructure pillars and in Business areas. Pick one or more districts;
 *Find a mandal* then appears next to it and lists only those districts' mandals. Both boxes can be cleared with ×.
 Clicking a mandal on the map also selects it and adds its district.
 
@@ -75,6 +75,7 @@ data on all four, re-ranked among themselves.
   reports: the business's own data combined with the infrastructure pillars, weighted equally. ★ marks the
   top 15 pilot mandals. *A single measure* includes the **business activity score** (the earlier score from
   business data only, 679 mandals) and its inputs.
+- **Districts and Find a mandal** work as in Infrastructure pillars: Districts in the right-hand column, and *Find a mandal* appears once a district is picked, listing only its mandals.
 - **Selecting a mandal.** "↩ Back to the state map" sits above the map. Under the map, side by side:
   ① **Infrastructure check** — what the business needs from each pillar against what the mandal has (Meets /
   Partly / Gap / Unknown) and a verdict (Suitable, Partly suitable, Not suitable); ② **Opportunity score** — score,
