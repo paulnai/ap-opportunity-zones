@@ -1346,9 +1346,6 @@ with tabs[0]:
                                               "to the district map.")
                     if fpick != sel_lgd and (fpick is not None or sel_lgd in fopts):
                         select_mandal(fpick)
-                else:
-                    st.markdown('<div class="sm" style="margin-top:2.1rem">Pick a district to find a mandal in it.'
-                                '</div>', unsafe_allow_html=True)
         if sel_lgd is None and BIZ:
             st.markdown('<div class="card"><h4>Select a mandal</h4>Click a mandal on the map or type its name above. '
                         'Its profile appears here, and under the map you will see whether it suits '
