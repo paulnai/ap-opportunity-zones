@@ -1,13 +1,13 @@
 # AP Opportunity Zones Explorer
 
 An interactive dashboard for exploring the results of **Problem Statement 2: Entrepreneurial Opportunity Zones**
-(ISB AMPBA capstone with SERP, Government of Andhra Pradesh). It follows the four pillars and four business areas finalised by the team.
+(ISB AMPBA capstone with SERP, Government of Andhra Pradesh). It follows the four pillars and four business areas finalised for the project.
 
 ## What's in it
 
 **Opening page: Andhra Pradesh.** When the dashboard loads, no *Section* is selected and the page shows
 "Infrastructure & Business Opportunity Overview": two maps side by side. Left: each mandal's strongest
-infrastructure pillar. Right: each mandal's strongest business area (team opportunity scores). Each map has its
+infrastructure pillar. Right: each mandal's strongest business area (opportunity scores). Each map has its
 legend top-left and its caption inside the frame, bottom-right; these two maps have no hover box. Pick
 *Infrastructure pillars* or *Business areas* in the sidebar to explore one in depth; "↩ Back to the Andhra Pradesh
 overview" in the sidebar returns here. The two sections open on "Andhra Pradesh Infrastructure Overview" and
@@ -27,13 +27,15 @@ Built around the professor's review on 24 October 2026:
 
 **Opening view.** *Pillar on the map* starts blank, and the state map shows the four pillars read together:
 each mandal is coloured by its **strongest pillar** (Water blue, Electricity amber, Connectivity teal, Market
-access purple), among the pillars where it is in the state's top third; pale = High on no pillar. The figures at
-the top give the total number of mandals, then for each pillar the number at High out of those with data.
+access purple), among the pillars where it is in the top third; pale = High on no pillar. Pillars are compared only across the
+323 mandals with data on all four, ranked among themselves; other mandals are grey. The figures at the top give
+the total number of mandals, then for each pillar the number at High out of those 323.
 *Colour the map by* can also show Number of pillars at High (0–4), Weakest pillar or Data coverage.
 
 **Pillar on the map.** Pick Connectivity, Electricity, Water or Market access from the drop-down to see one
-pillar on its own; clear it to return to the opening view. Colour by Level (High / Medium / Low), Score
-(shading), Level within the district, or A single measure (not for Electricity, whose file has no raw measures).
+pillar on its own; clear it to return to the opening view. Colour by Level (High / Medium / Low), Regions (the pillar's spatially
+constrained clusters), Level within the district, or A single measure (Electricity's come from
+`source/electricity_geo_axis.csv`).
 
 **Selecting a mandal.** Click a mandal on the map (or type its name in *Find a mandal*) and, in the
 Infrastructure pillars section, the map area switches to **four small maps, one per pillar**, zoomed to that
@@ -47,18 +49,20 @@ four business areas from the strongest level down (★ = High).
 in blue), **Business areas** (the four opportunity scores only, in orange) or **Choose my own** (tick any mix of the
 eight on one line; pillars stay blue and business areas orange). Each group of bars is one mandal; the table below
 shows level · score for the same choice, with blue rows for pillars and orange rows for business areas.
+Percentiles and levels here are among the 323 mandals with data on all four pillars.
 
-**Levels.** Connectivity keeps the levels from its report (Well connected, Average, Poorly connected). The other
-pillars split their scored mandals into thirds: High is the top third of mandals with data.
+**Levels.** Each pillar's score is turned into a percentile and split into thirds: High is the top third of the
+mandals with data on that pillar (Connectivity included). Views that compare pillars use only the 323 mandals with
+data on all four, re-ranked among themselves.
 
 **Business areas** (second section): Agriculture, Livestock, Rural Services and Aquaculture.
 
 - **Opening view.** *Business area* starts blank. The map colours each mandal by its **strongest business area**
-  (top third of the team's opportunity score); the figures at the top give the total number of mandals and, for
+  (top third of the opportunity score); the figures at the top give the total number of mandals and, for
   each business, the number at High. *Colour the map by* can also show Number of business areas at High (0–4).
-- **One business area.** The map shows the team's **opportunity score** (0–100) from the Integrated clustering
-  reports: the business's own data combined with the infrastructure pillars, weighted equally. ★ marks the team's
-  top 15 pilot mandals. *A single measure* includes the **business activity score** (the team's earlier score from
+- **One business area.** The map shows the **opportunity score** (0–100), or its five **opportunity zones**, from the Integrated clustering
+  reports: the business's own data combined with the infrastructure pillars, weighted equally. ★ marks the
+  top 15 pilot mandals. *A single measure* includes the **business activity score** (the earlier score from
   business data only, 679 mandals) and its inputs.
 - **Selecting a mandal.** "↩ Back to the state map" sits above the map. Under the map, side by side:
   ① **Infrastructure check** — what the business needs from each pillar against what the mandal has (Meets /
@@ -66,8 +70,8 @@ pillars split their scored mandals into thirds: High is the top third of mandals
   rank, level, zone, possible SHG enterprises and support range. With no business picked, one line per business.
 - **Regions tab.** The five opportunity zones per business, with possible SHG enterprises and support ranges,
   and the top 15 pilot mandals.
-- What each business needs comes from slide 14 of the mid-review deck; Aquaculture's ratings are Claude's
-  suggestion, approved by Nairita and pending team review. They are used only for the infrastructure check.
+- What each business needs (High / Medium / Low per pillar) is a set of assumed requirements, used only for the
+  infrastructure check. They can be made more accurate with expert weights.
 
 | Layer | Mandals with data |
 |---|---|
@@ -111,8 +115,8 @@ The link stays the same and the app updates itself.
 |---|---|
 | `app.py` | The dashboard. Labels, colours, caveats, business needs and zone texts are in **Section 1, Settings**. |
 | `data/` | Prepared data: one row per mandal with every layer, keyed by LGD code; map shapes; `name_matching.csv`. |
-| `prepare_data.py`, `crosswalk.py` | Rebuild `data/` from `source/`. Needed only when a team's results change. |
-| `source/` | Each team's result file as received. `source/integrated/` holds the four opportunity-score files from the Integrated clustering folder; the app reads them directly. |
+| `prepare_data.py`, `crosswalk.py` | Rebuild `data/` from `source/`. Needed only when a result file changes. |
+| `source/` | Each analysis result file as received. `source/integrated/` holds the four opportunity-score files from the Integrated clustering folder; the app reads them directly. |
 | `static/`, `.streamlit/` | Base map file and app settings. |
 
 ## Notes on the data
