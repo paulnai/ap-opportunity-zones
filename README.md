@@ -7,8 +7,9 @@ An interactive dashboard for exploring the results of **Problem Statement 2: Ent
 
 **Opening page: Andhra Pradesh.** When the dashboard loads, no *Section* is selected and the page shows
 "Infrastructure & Business Opportunity Overview": two maps side by side. Left: each mandal's strongest
-infrastructure pillar. Right: each mandal's strongest business area (opportunity scores). Each map has its
-legend top-left and its caption inside the frame, bottom-right; these two maps have no hover box. Pick
+infrastructure pillar. Right: each mandal's strongest business area (opportunity scores). Each map has a short
+heading and caption beside its title, its legend top-left and one line underneath; these two maps have no hover
+box. This page always shows the whole state (no district filter). Pick
 *Infrastructure pillars* or *Business areas* in the sidebar to explore one in depth; "↩ Back to the Andhra Pradesh
 overview" in the sidebar returns here. The two sections open on "Andhra Pradesh Infrastructure Overview" and
 "Andhra Pradesh Business Opportunity Overview".
@@ -37,13 +38,23 @@ pillar on its own; clear it to return to the opening view. Colour by Level (High
 constrained clusters), Level within the district, or A single measure (Electricity's come from
 `source/electricity_geo_axis.csv`).
 
-**Selecting a mandal.** Click a mandal on the map (or type its name in *Find a mandal*) and, in the
-Infrastructure pillars section, the map area switches to **four small maps, one per pillar**, zoomed to that
-mandal's district with the mandal outlined in black. One legend, top left, covers all four maps. Click another
-mandal on any small map to switch to it, or **Back to the state map** to return. The sidebar's *Districts* box
-fills in with the mandal's district; **Back to the state map** restores what the box held before. The profile
-cards on the right give the exact scores and ranks, and **Recommended Business Areas for this Mandal** lists the
-four business areas from the strongest level down (★ = High).
+**Districts and Find a mandal (Infrastructure).** Both sit in the right-hand column. Pick one or more districts;
+*Find a mandal* then appears next to it and lists only those districts' mandals. Both boxes can be cleared with ×.
+Clicking a mandal on the map also selects it and adds its district.
+
+**Selecting a mandal (Infrastructure).** The map shows **only that mandal**, outlined in black, with its
+neighbours as faint, clickable outlines. The mandal is split into four equal parts, one per pillar, each in its
+pillar's level colour (High blue, Medium grey, Low red, No data white); pillars at the same level sit together, so
+two Low pillars make half the mandal red. Hover a colour to list its pillars. The split is only a way to show four
+values on one shape, not a statement about where in the mandal each value applies. While a mandal is selected the
+sidebar hides the map options and the pillar box becomes *Pillar details* (which pillar's measures the profile
+lists). **Back to the district map** or clearing *Find a mandal* returns to the district map. The profile cards on
+the right give the exact scores and ranks, and **Recommended Business Areas for this Mandal** lists the four
+business areas from the strongest level down (★ = High). Neighbours come from `data/mandal_neighbours.csv` and the
+four parts from `data/mandal_parts.geojson` (both precomputed from the mandal boundaries).
+
+**Regions tab.** For the pillar (or business area) picked in the sidebar: a map of its regions (or zones) on top,
+in the same colours as the *Regions* map option, and the table below with each row in its map colour.
 
 **Compare mandals.** Pick up to five mandals, then *Compare on*: **Infrastructure pillars** (the four pillars only,
 in blue), **Business areas** (the four opportunity scores only, in orange) or **Choose my own** (tick any mix of the
