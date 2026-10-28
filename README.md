@@ -76,10 +76,17 @@ data on all four, re-ranked among themselves.
   top 15 pilot mandals. *A single measure* includes the **business activity score** (the earlier score from
   business data only, 679 mandals) and its inputs.
 - **Districts and Find a mandal** work as in Infrastructure pillars: Districts in the right-hand column, and *Find a mandal* appears once a district is picked, listing only its mandals.
-- **Selecting a mandal.** "↩ Back to the state map" sits above the map. Under the map, side by side:
-  ① **Infrastructure check** — what the business needs from each pillar against what the mandal has (Meets /
-  Partly / Gap / Unknown) and a verdict (Suitable, Partly suitable, Not suitable); ② **Opportunity score** — score,
-  rank, level, zone, possible SHG enterprises and support range. With no business picked, one line per business.
+- **Selecting a mandal.** The map shows only that mandal, with faint clickable outlines of its neighbours, and
+  "↩ Back to the district map" above it. The sidebar's map options are hidden; the business box becomes
+  *Business area details*.
+  - *No business picked:* the mandal is split into four equal parts, one per business area, coloured by the
+    infrastructure check (green Suitable, yellow Partly suitable, red Not suitable); hover a colour to see which
+    business areas it covers. On the right: **Which business areas suit [mandal]?** (business area, infrastructure
+    check, opportunity score, zone), then the four pillar cards.
+  - *One business picked:* the whole mandal takes the colour of the answer to **Is [mandal] suitable for
+    [business]?** On the right: the four pillar cards, then ① the infrastructure check (what the business needs
+    from each pillar against what the mandal has: Meets / Partly / Gap / Unknown), then ② the opportunity score
+    (score, rank, level, zone, possible SHG enterprises, support range). Under the map: the score details card.
 - **Regions tab.** The five opportunity zones per business, with possible SHG enterprises and support ranges,
   and the top 15 pilot mandals.
 - What each business needs (High / Medium / Low per pillar) is a set of assumed requirements, used only for the

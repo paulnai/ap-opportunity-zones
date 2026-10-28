@@ -213,6 +213,11 @@ st.markdown("""
   table.st {width:100%; border-collapse:collapse; font-size:14px;}
   table.st th {text-align:left; color:#55534d; font-weight:600; border-bottom:1px solid #d6d3cb; padding:4px 6px;}
   table.st td {border-bottom:1px solid #eeece6; padding:5px 6px; vertical-align:middle;}
+  .sbox.tight {padding:.5rem .55rem;}
+  table.st.bz {font-size:12.5px; table-layout:fixed;}
+  table.st.bz th {font-size:12px; padding:4px 4px; line-height:1.25;}
+  table.st.bz td {padding:5px 4px; line-height:1.3; word-wrap:break-word;}
+  table.st.bz .bdg {font-size:11.5px; padding:1px 6px; white-space:nowrap;}
   .chips {display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:.2rem 0 .4rem 0;}
   .chip {border:1px solid #e3e1da; border-radius:14px; padding:3px 10px; background:#fff; font-size:14px; white-space:nowrap;}
   .mapcap {text-align:center; font-size:16px; color:#22211f; margin-top:-1.6rem; position:relative;}
@@ -324,6 +329,7 @@ with st.sidebar:
     # Infrastructure with one mandal selected: the map shows that mandal on all four pillars, so the map options
     # below don't apply; the pillar box then only chooses which pillar's details the profile lists
     infra_mandal = section == "Infrastructure pillars" and _ss.get("mandal_lgd") is not None
+    biz_mandal = section == "Business areas" and _ss.get("mandal_lgd") is not None
     if section == "Infrastructure pillars":
         pick = st.selectbox("Pillar details" if infra_mandal else "Pillar on the map", PK, index=None,
                             placeholder="Select a pillar", key="pillar_pick",
@@ -338,10 +344,13 @@ with st.sidebar:
     elif section == "Overview":
         scope, layer, view = "all", "con", "team"
     else:
-        pickb = st.selectbox("Business area", list(BUSINESSES), index=None, placeholder="Select a business area",
+        pickb = st.selectbox("Business area details" if biz_mandal else "Business area", list(BUSINESSES), index=None,
+                             placeholder="Select a business area", key="biz_pick",
                              format_func=lambda k: f"{BUSINESSES[k]['icon']}  {BUSINESSES[k]['name']}",
-                             help="Leave blank to see all four business areas together (the opening map). Pick one "
-                                  "to see its opportunity score on its own.")
+                             help=("Pick a business area to see whether this mandal suits it, under the map."
+                                   if biz_mandal else
+                                   "Leave blank to see all four business areas together (the opening map). Pick one "
+                                   "to see its opportunity score on its own."))
         scope, layer = ("all", "agr") if pickb is None else ("one", pickb)
         view = "team"
     MODES = {
@@ -363,11 +372,13 @@ with st.sidebar:
                                         else ["bbest", "bnhigh"])
     if section == "Overview":
         colour_by = "level"
-    elif infra_mandal:
+    elif infra_mandal or biz_mandal:
         colour_by = "level"
-        st.markdown('<div class="sbhint">The map shows the selected mandal on all four pillars, so there are no map '
-                    'options. Clear the mandal (× next to <b>Find a mandal</b>) to colour the map again.</div>',
-                    unsafe_allow_html=True)
+        st.markdown('<div class="sbhint">The map shows the selected mandal '
+                    + ("on all four pillars" if infra_mandal else "on all four business areas" if scope == "all"
+                       else f"coloured by whether it suits {BUSINESSES[layer]['name']}")
+                    + ', so there are no map options. Clear the mandal (× next to <b>Find a mandal</b>) to colour the '
+                    'map again.</div>', unsafe_allow_html=True)
     else:
         colour_by = st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0],
                              captions=[MODES[m][1] for m in avail])
@@ -923,6 +934,9 @@ def infra_verdict(r, b):
 
 VERDICT_STYLE = {"Suitable": ("✓", "#d8f0de", "#14532d"), "Partly suitable": ("~", "#fdf0c8", "#6b4a00"),
                  "Not suitable": ("✗", "#fadbd8", "#7f1d1d")}
+VERDICT_ORDER = {"Suitable": 0, "Partly suitable": 1, "Not suitable": 2}
+# Map colours for the infrastructure check (stronger versions of the badge colours)
+VERDICT_COLOURS = [("Suitable", "#2e8b57"), ("Partly suitable", "#e0b028"), ("Not suitable", "#c0392b")]
 LEVEL_BADGE = {"High": ("#dbe8fb", "#0d366b"), "Medium": ("#ecebe7", "#3b3a36"), "Low": ("#fadbd8", "#7f1d1d")}
 
 
@@ -935,7 +949,12 @@ def verdict_badge(v):
     return badge(f"{ic} {v}", bg, fg)
 
 
-def suitability_band(r, b):
+def suitability_parts(r, b):
+    """The infrastructure check and the opportunity score cards (HTML) for one business."""
+    return suitability_band(r, b, draw=False)
+
+
+def suitability_band(r, b, draw=True):
     """Under the map: infrastructure check (left) and the opportunity score (right), side by side."""
     v = BUSINESSES[b]
     verdict, gaps, unknown, res = infra_verdict(r, b)
@@ -970,6 +989,8 @@ def suitability_band(r, b):
     else:
         right_html = ('<div class="sbox"><div class="sh">② Opportunity score'
                       f'</div><div class="kv" style="margin-top:.45rem">{_OPP_NODATA}</div></div>')
+    if not draw:
+        return left_html, right_html
     st.markdown(f'<div class="sq">Is <b>{r["mandal_name"]}</b> suitable for <b>{v["name"]}</b>?</div>',
                 unsafe_allow_html=True)
     c1, c2 = st.columns(2, gap="medium")
@@ -988,25 +1009,23 @@ def all_business_lines(r):
                + (f' {badge("★ Top 15", "#fff3c4", "#5c4400")}' if r[f"{b}_rk"] <= 15 else "")) if has \
             else '<span class="sm">Data not available</span>'
         zone = r[f"{b}_zone"].split(": ", 1)[-1] if has else "—"
-        key = ({"High": 0, "Medium": 1, "Low": 2}.get(lv_, 3), -(r[f"{b}_score"] if has else -1))
+        key = (VERDICT_ORDER[verdict], -(r[f"{b}_score"] if has else -1))
         rows.append((key, f'<tr><td><b>{BUSINESSES[b]["icon"]} {BUSINESSES[b]["name"]}</b></td>'
                           f'<td>{verdict_badge(verdict)}</td><td>{opp}</td><td>{zone}</td></tr>'))
     rows.sort(key=lambda x: x[0])
     st.markdown(f'<div class="sq">Which business areas suit <b>{r["mandal_name"]}</b>?</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sbox"><table class="st"><thead><tr><th scope="col">Business area</th>'
+    st.markdown('<div class="sbox tight"><table class="st bz"><colgroup><col style="width:24%"><col style="width:27%">'
+                '<col style="width:21%"><col style="width:28%"></colgroup><thead><tr><th scope="col">Business area</th>'
                 '<th scope="col">① Infrastructure check</th><th scope="col">② Opportunity score</th>'
                 '<th scope="col">Zone</th></tr></thead><tbody>' + "".join(x[1] for x in rows) + '</tbody></table>'
-                '<div class="sm" style="margin-top:.45rem">Strongest first. Pick a business area in the sidebar for '
+                '<div class="sm" style="margin-top:.45rem">Sorted by the infrastructure check, as on the map. Pick a business area in the sidebar for '
                 'the full explanation, possible SHG enterprises and support range.</div></div>',
                 unsafe_allow_html=True)
 
 
-def profile(lgd):
-    r = DF[DF["mandal_lgd"] == lgd].iloc[0]
-    st.markdown(f'<div class="eyebrow">{r["district_name"]} district · {r["revenue_division"]} division · '
-                f'LGD {int(lgd)}</div><h3 style="margin:.1rem 0 .5rem 0">{r["mandal_name"]}</h3>',
+def pillar_cards(r):
+    st.markdown('<div style="margin-top:.8rem;font-weight:600">Performance across the four pillars</div>',
                 unsafe_allow_html=True)
-    st.markdown("**Performance across the four pillars**")
     c1, c2 = st.columns(2)
     for i, p in enumerate(PK):
         (c1 if i % 2 == 0 else c2).markdown(pillar_card(r, p, section == "Infrastructure pillars" and scope == "one" and p == layer),
@@ -1016,11 +1035,10 @@ def profile(lgd):
                   f"Low on {int(r['n_low'])} of 4." if r["all4"] else
                   f"Not all four pillars have data, so this mandal is left out of the comparisons across pillars."))
 
-    if scope == "all":
-        st.caption("Pick a business area in the sidebar to see its details for this mandal." if BIZ else
-                   "Pick a pillar under **Pillar details** in the sidebar to see that pillar's measures for this "
-                   "mandal.")
-    else:
+
+def layer_details(r):
+    """Score, rank, level and measures of the current layer (in a fold-away card for a business area)."""
+    if True:
         from contextlib import nullcontext
         # Business areas: the details fold away so the suitability answer sits right under the map
         holder = st.expander(f"{BUSINESSES[layer]['name']}: score details and business activity measures") \
@@ -1058,6 +1076,30 @@ def profile(lgd):
             st.markdown('<div class="note">City mandal: village access and bus service assumed 100%; road condition '
                         '(*) is the district median.</div>', unsafe_allow_html=True)
         holder.__exit__(None, None, None)
+
+
+def profile(lgd):
+    r = DF[DF["mandal_lgd"] == lgd].iloc[0]
+    st.markdown(f'<div class="eyebrow">{r["district_name"]} district · {r["revenue_division"]} division · '
+                f'LGD {int(lgd)}</div><h3 style="margin:.1rem 0 .5rem 0">{r["mandal_name"]}</h3>',
+                unsafe_allow_html=True)
+    if BIZ and scope == "all":
+        all_business_lines(r)
+    pillar_cards(r)
+    if scope == "all":
+        st.caption("Pick a business area under **Business area details** in the sidebar to see whether this mandal "
+                   "suits it." if BIZ else
+                   "Pick a pillar under **Pillar details** in the sidebar to see that pillar's measures for this "
+                   "mandal.")
+    elif BIZ:
+        # One business picked: pillar cards, then the infrastructure check, then the opportunity score
+        left_html, right_html = suitability_parts(r, layer)
+        st.markdown(f'<div class="sq" style="margin-top:.8rem">Is <b>{r["mandal_name"]}</b> suitable for '
+                    f'<b>{BUSINESSES[layer]["name"]}</b>?</div>', unsafe_allow_html=True)
+        st.markdown(left_html, unsafe_allow_html=True)
+        st.markdown('<div style="height:.7rem"></div>' + right_html, unsafe_allow_html=True)
+    else:
+        layer_details(r)
 
     if BIZ:
         return
@@ -1118,7 +1160,7 @@ PART_LEVELS = [("High", LEVEL_COLOURS["High"]), ("Medium", LEVEL_COLOURS["Medium
                ("No data", "#ffffff")]
 
 
-def mandal_pillars_map(r):
+def mandal_pillars_map(r, items=None, cats=None):
     """One mandal on its own, coloured by its four pillars: the mandal is cut into four equal slices, one per pillar,
     and each slice takes that pillar's level colour. Pillars at the same level sit side by side, so the colours read
     as shares (two Low pillars = half the mandal red). Neighbours are faint, clickable outlines."""
@@ -1139,20 +1181,26 @@ def mandal_pillars_map(r):
                                     text=nb.set_index("mandal_lgd").loc[pts.index, "mandal_name"],
                                     textfont=dict(size=11, color="#8f8b82"), hoverinfo="skip", showlegend=False))
         tl.append([])
-    # Pillars grouped by level (High, Medium, Low, No data), so each colour is one block of the mandal
-    level_of = {p: (r[f"{p}_lvl"] if isinstance(r[f"{p}_lvl"], str) else "No data") for p in PK}
-    order = [p for lv, _ in PART_LEVELS for p in PK if level_of[p] == lv]
+    # items: (key, hover line, level) for the four parts; default = the four pillars
+    if items is None:
+        items = [(p, PILLARS[p]["name"], r[f"{p}_lvl"]) for p in PK]
+    keys = [k for k, _, _ in items]
+    line_of = {k: t for k, t, _ in items}
+    cats = cats or PART_LEVELS
+    # Grouped by level (High, Medium, Low, No data), so each colour is one block of the mandal
+    level_of = {k: (lv if isinstance(lv, str) else "No data") for k, _, lv in items}
+    order = [p for lv, _ in cats for p in keys if level_of[p] == lv]
     parts = mandal_parts()[lgd]
-    for lv, colour in PART_LEVELS:
+    for lv, colour in cats:
         ps = [p for p in order if level_of[p] == lv]
         if not ps:
             continue
         idx = [order.index(p) for p in ps]
         sub = {"type": "FeatureCollection", "features": [parts[i] for i in idx]}
-        txt = f"<b>{lv}</b><br>" + "<br>".join(f"• {PILLARS[p]['name']}" for p in ps)
+        txt = f"<b>{lv}</b><br>" + "<br>".join(f"• {t}" for t in dict.fromkeys(line_of[p] for p in ps))
         fig.add_trace(go.Choropleth(locations=[parts[i]["properties"]["pid"] for i in idx], z=np.ones(len(idx)),
                                     geojson=sub, featureidkey="properties.pid", colorscale=[[0, colour], [1, colour]],
-                                    showscale=False, marker_line_width=0.6,
+                                    showscale=False, marker_line_width=0.6 if lv == "No data" else 0,
                                     marker_line_color="#a9a59b" if lv == "No data" else colour,
                                     text=[txt] * len(idx), hoverinfo="text", name=lv, showlegend=False))
         tl.append([])
@@ -1175,6 +1223,16 @@ def mandal_pillars_map(r):
                                   itemdoubleclick=False),
                       hoverlabel=dict(bgcolor="white", font=dict(size=13, color="#22211f"), bordercolor="#cfcdc6"))
     return fig, tl
+
+
+def business_items(r):
+    """The four business areas for the one-mandal map: coloured by the infrastructure check, as in the table."""
+    out = []
+    for b in BK:
+        verdict, gaps, unknown, _ = infra_verdict(r, b)
+        detail = f"{gaps} gap{'s' if gaps != 1 else ''}" + (f", {unknown} unknown" if unknown else "")
+        out.append((b, f"{BUSINESSES[b]['name']} ({detail})", verdict))
+    return out
 
 
 def clicked_lgd(ev, tl):
@@ -1249,31 +1307,44 @@ with tabs[0]:
     left, right = st.columns([1.5, 1], gap="large")
     sel_lgd = st.session_state.mandal_lgd
     infra_sel = sel_lgd is not None and section == "Infrastructure pillars"
+    biz_sel = sel_lgd is not None and section == "Business areas"
     with left:
-        if infra_sel:
-            # One mandal, all four pillars on its own map (the profile cards, drawn on the map)
+        if infra_sel or biz_sel:
+            # One mandal on its own map, cut into four parts: the four pillars, or the four business areas
             r0 = DF[DF["mandal_lgd"] == sel_lgd].iloc[0]
             h1, h2 = st.columns([2.3, 1.7])
-            h1.markdown(f"**{r0['mandal_name']} on the four pillars** · {r0['district_name']} district")
+            what_ = (f"for {BUSINESSES[layer]['name']}" if biz_sel and scope == "one" else
+                     "on the four business areas" if biz_sel else "on the four pillars")
+            h1.markdown(f"**{r0['mandal_name']} {what_}** · {r0['district_name']} district")
             if h2.button("↩ Back to the district map", use_container_width=True, key="back_mandal"):
                 select_mandal(None)
-            f_, tl_ = mandal_pillars_map(r0)
+            if biz_sel and scope == "one":
+                v_, g_, u_, _ = infra_verdict(r0, layer)
+                d_ = f"{g_} gap{'s' if g_ != 1 else ''}" + (f", {u_} unknown" if u_ else "")
+                one_ = [(f"{layer}{i}", f"{BUSINESSES[layer]['name']} ({d_})", v_) for i in range(4)]
+                f_, tl_ = mandal_pillars_map(r0, one_, VERDICT_COLOURS)
+            elif biz_sel:
+                f_, tl_ = mandal_pillars_map(r0, business_items(r0), VERDICT_COLOURS)
+            else:
+                f_, tl_ = mandal_pillars_map(r0)
             ev_ = st.plotly_chart(f_, use_container_width=True, on_select="rerun", selection_mode="points",
                                   key=f"mandal_{st.session_state.map_ver}", config=MAP_CONFIG)
             lg = clicked_lgd(ev_, tl_)
             if lg is not None and int(lg) != sel_lgd:
                 select_mandal(lg)
-            st.caption(f"{r0['mandal_name']} is split into four equal parts, one per pillar, each in its level's "
-                       "colour (same colours as the profile cards). Hover a colour to see which pillars it covers. "
-                       "Faint outlines are the neighbouring mandals; click one to switch to it.")
+            if biz_sel and scope == "one":
+                st.caption(f"{r0['mandal_name']} is coloured by the answer to “Is {r0['mandal_name']} suitable for "
+                           f"{BUSINESSES[layer]['name']}?” on the right. Faint outlines are the neighbouring mandals; "
+                           "click one to switch to it.")
+                layer_details(r0)
+            else:
+                st.caption(f"{r0['mandal_name']} is split into four equal parts, one per "
+                           + ("business area, each coloured by its infrastructure check (as in the table on the right). "
+                              "Hover a colour to see which business areas it covers. " if biz_sel else
+                              "pillar, each in its level's colour (same colours as the profile cards). Hover a colour to "
+                              "see which pillars it covers. ")
+                           + "Faint outlines are the neighbouring mandals; click one to switch to it.")
         else:
-            if sel_lgd is not None:
-                # Business areas: what is selected, and the way back, above the map
-                r0 = DF[DF["mandal_lgd"] == sel_lgd].iloc[0]
-                h1, h2 = st.columns([2.3, 1.7])
-                h1.markdown(f"**{r0['mandal_name']}** · {r0['district_name']} district · outlined on the map")
-                if h2.button("↩ Back to the state map", use_container_width=True, key="back_single"):
-                    select_mandal(None)
             fig, trace_lgd = build_map(df)
             ev = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points",
                                  key=f"map_{st.session_state.map_ver}", config=MAP_CONFIG)
@@ -1338,10 +1409,7 @@ with tabs[0]:
     if sel_lgd is not None and BIZ:
         # Full width under the map, the two answers side by side
         _r = DF[DF["mandal_lgd"] == sel_lgd].iloc[0]
-        if scope == "one":
-            suitability_band(_r, layer)
-        else:
-            all_business_lines(_r)
+        pass
 
 # ════════════════════════════════════════════════════════════════════════════
 # 6. COMPARE
