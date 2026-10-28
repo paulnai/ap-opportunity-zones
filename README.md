@@ -33,6 +33,11 @@ access purple), among the pillars where it is in the top third; pale = High on n
 the total number of mandals, then for each pillar the number at High out of those 323.
 *Colour the map by* can also show How many pillars are strong or Weakest pillar.
 
+**Notes under the map.** The notes under each map are bullet points; *click a mandal* links up to the Districts
+and Find a mandal boxes. Under *Strongest pillar* (and *Strongest business area*) a note explains that each pillar is
+ranked separately, so percentiles can't be compared across pillars, and links to the *How many pillars are strong*
+map (the link reloads the dashboard on that map). The same point is under Limitations on the About tab.
+
 **Pillar on the map.** Pick Connectivity, Electricity, Water or Market access from the drop-down to see one
 pillar on its own; clear it to return to the opening view. Colour by Level (High / Medium / Low), Regions (the pillar's spatially
 constrained clusters), Level within the district, or A single measure (Electricity's come from

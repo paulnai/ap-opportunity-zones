@@ -214,6 +214,23 @@ st.markdown("""
   table.st th {text-align:left; color:#55534d; font-weight:600; border-bottom:1px solid #d6d3cb; padding:4px 6px;}
   table.st td {border-bottom:1px solid #eeece6; padding:5px 6px; vertical-align:middle;}
   .sbox.tight {padding:.5rem .55rem;}
+  ul.mapnotes {margin:.1rem 0 .6rem 0; padding-left:1.15rem; font-size:14px; color:#6b6862; line-height:1.55;}
+  ul.mapnotes li {margin:.15rem 0;}
+  #find-a-mandal {scroll-margin-top:5.5rem;}
+  ul.mapnotes a {color:#1c5cab;}
+  ul.mapnotes.in {margin:0; color:#3b3a36;}
+  .readcard {margin:.2rem 0 .8rem 0; border:1px solid #d6d3cb; border-left:4px solid #1c5cab; border-radius:10px;
+             background:#fff; padding:.9rem 1rem; font-size:14px; line-height:1.5; color:#3b3a36;}
+  .readcard .rh {font-weight:700; font-size:15px; color:#22211f; margin-bottom:.45rem;}
+  .readcard p {margin:0 0 .5rem 0;}
+  .readcard .rl {font-size:13px; color:#55534d; margin:.2rem 0 .35rem 0;}
+  .readcard a.rbtn {display:inline-block; background:#eaf1fb; color:#0d366b !important; font-weight:600;
+                    text-decoration:none !important; border:1px solid #bcd2ef; border-radius:8px; padding:.35rem .75rem;}
+  .readcard a.rbtn:hover {background:#dbe8fb;}
+  .readcard.row {display:flex; align-items:center; gap:1rem; padding:.7rem 1rem;}
+  .readcard.row .rt {flex:1; font-size:13.5px;}
+  .readcard.row .rh {margin-bottom:.2rem;}
+  .readcard.row a.rbtn {flex:none; text-align:center; line-height:1.3;}
   table.st.bz {font-size:12.5px; table-layout:fixed;}
   table.st.bz th {font-size:12px; padding:4px 4px; line-height:1.25;}
   table.st.bz td {padding:5px 4px; line-height:1.3; word-wrap:break-word;}
@@ -303,6 +320,20 @@ def district_box():
 # ════════════════════════════════════════════════════════════════════════════
 # 3. SIDEBAR
 # ════════════════════════════════════════════════════════════════════════════
+# A link such as ?map=nhigh (from a caption or the Limitations tab) opens that map directly
+_qmap = st.query_params.get("map")
+if _qmap in ("nhigh", "bnhigh"):
+    _sec = "Infrastructure pillars" if _qmap == "nhigh" else "Business areas"
+    st.session_state.update(section_radio=_sec, mandal_lgd=None, pillar_pick=None, biz_pick=None)
+    st.session_state[f"colour_{_sec}_all_"] = _qmap
+    st.query_params.clear()
+
+
+def map_link(key, label):
+    """A link that opens the given 'How many … are strong' map in this tab."""
+    return f'<a href="?map={key}" target="_self">{label}</a>'
+
+
 with st.sidebar:
     st.markdown("### Opportunity Zones Explorer")
     # Nothing picked = the opening overview (both maps side by side). A button brings it back.
@@ -381,7 +412,8 @@ with st.sidebar:
                     'map again.</div>', unsafe_allow_html=True)
     else:
         colour_by = st.radio("Colour the map by", avail, format_func=lambda m: MODES[m][0],
-                             captions=[MODES[m][1] for m in avail])
+                             captions=[MODES[m][1] for m in avail],
+                             key=f"colour_{section}_{scope}_{layer if scope == 'one' else ''}")
     measure_pick = None
     if colour_by == "measure":
         ms = LAYERS[layer]["measures"]
@@ -637,6 +669,33 @@ def hover(d):
     return out
 
 
+@st.cache_data
+def mandal_bounds():
+    """Each mandal's lon/lat bounding box, used to size the map frame to the area shown."""
+    rows = []
+    for f in MANDAL_GEO["features"]:
+        g = f["geometry"]
+        pts = np.vstack([np.array(poly[0]) for poly in (g["coordinates"] if g["type"] == "MultiPolygon"
+                                                         else [g["coordinates"]])])
+        rows.append((int(f["properties"]["mandal_lgd"]), pts[:, 0].min(), pts[:, 0].max(), pts[:, 1].min(),
+                     pts[:, 1].max()))
+    return pd.DataFrame(rows, columns=["lgd", "x0", "x1", "y0", "y1"]).set_index("lgd")
+
+
+def map_extent(d, width=590, lo=430, hi=640, pad=0.03):
+    """The shown area's exact extent and a frame height that fits its shape, so the map fills the frame and
+    there is no empty band above or below it (Plotly's fitbounds adds ~10% padding on every side)."""
+    b = mandal_bounds().reindex(d["mandal_lgd"].astype(int)).dropna()
+    if b.empty:
+        return None, hi
+    x0, x1, y0, y1 = b["x0"].min(), b["x1"].max(), b["y0"].min(), b["y1"].max()
+    px, py = (x1 - x0) * pad, (y1 - y0) * pad
+    x0, x1, y0, y1 = x0 - px, x1 + px, y0 - py, y1 + py
+    merc = lambda lat: np.log(np.tan(np.pi / 4 + np.radians(lat) / 2))
+    ratio = (merc(y1) - merc(y0)) / np.radians(x1 - x0)
+    return (x0, x1, y0, y1), int(min(hi, max(lo, width * ratio)))
+
+
 def build_map(d):
     fig, trace_lgd = go.Figure(), []
     common = dict(geojson=MANDAL_GEO, featureidkey="properties.mandal_lgd", marker_line_color="white",
@@ -749,8 +808,14 @@ def build_map(d):
         trace_lgd.append([])
         fig.add_trace(mandal_name_trace(sel["mandal_lgd"].iloc[0], sel["mandal_name"].iloc[0]))
         trace_lgd.append([])
-    fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
-    fig.update_layout(height=640, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+    ext, h_ = map_extent(d)
+    if ext is None:
+        fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)")
+    else:
+        fig.update_geos(fitbounds=False, visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)",
+                        lonaxis_range=[ext[0], ext[1]], lataxis_range=[ext[2], ext[3]])
+    fig.update_layout(height=h_, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
+                      dragmode=False,
                       legend=dict(x=0.01, y=0.99, xanchor="left", yanchor="top", bgcolor="rgba(255,255,255,0.9)",
                                   bordercolor="#e3e1da", borderwidth=1, font=dict(size=12)),
                       hoverlabel=dict(bgcolor="white", font=dict(size=13, color="#22211f"), bordercolor="#cfcdc6"))
@@ -1379,14 +1444,28 @@ with tabs[0]:
             if BIZ and scope == "one":
                 MODE_NOTE["level"] = ("★ = the top 15 pilot mandals. Grey = data not available "
                                       "(323 mandals with all four pillars), not a low score.")
-            if colour_by in MODE_NOTE:
-                st.caption(MODE_NOTE[colour_by])
-            st.caption("Hover for details · **click a mandal** to "
-                       + (("see which business areas suit it" if scope == "all" else "see whether it suits this business")
-                          if BIZ else "open it on all four pillars")
-                       + " · click a legend item to hide it.")
+            # Notes under the map, as bullets: what the colours mean, how to use the map, then the caveat
+            _act = (("see which business areas suit it" if scope == "all" else "see whether it suits this business")
+                    if BIZ else "open it on all four pillars")
+            _notes = ([MODE_NOTE[colour_by]] if colour_by in MODE_NOTE else []) + [
+                'Hover for details · <a href="#find-a-mandal" target="_self"><b>click a mandal</b></a> (or pick a '
+                f'district and a mandal on the right) to {_act} · click a legend item to hide it.']
+            st.markdown('<ul class="mapnotes">' + "".join(f"<li>{n}</li>" for n in _notes) + "</ul>",
+                        unsafe_allow_html=True)
+            if sel_lgd is None and colour_by in ("best", "bbest"):
+                # Team lead's caveat: percentiles can't be compared across pillars (or business areas)
+                _w = "pillar" if colour_by == "best" else "business area"
+                _k = "nhigh" if colour_by == "best" else "bnhigh"
+                st.markdown(
+                    f'<div class="note"><ul class="mapnotes in">'
+                    f'<li>Each {_w} is ranked separately, so percentiles can\'t be compared across {_w}s.</li>'
+                    f'<li>“Strongest {_w}” only shows where a mandal ranks highest compared to other mandals.</li>'
+                    f'<li>For an overall picture, use the '
+                    + map_link(_k, f"“How many {_w}s are strong” map") + '.</li></ul></div>',
+                    unsafe_allow_html=True)
     with right:
         # Both sections: Districts first; Find a mandal then lists only that district's mandals
+        st.markdown('<div id="find-a-mandal"></div>', unsafe_allow_html=True)
         dcol, fcol = st.columns(2, gap="small")
         with dcol:
             district_box()
@@ -1651,7 +1730,13 @@ with tabs[4]:
             "- **What each business needs** (for the infrastructure check) is a set of assumed High / Medium / Low "
             "requirements. They can be made more accurate with expert weights.\n"
             "- **Livestock, Rural Services and Aquaculture** files have no LGD codes; they were matched by name "
-            "(611 exact, 68 spelling variants).")
+            "(611 exact, 68 spelling variants).\n"
+            "- **Percentiles can't be compared across pillars.** Each pillar is ranked separately, so percentiles "
+            "can't be compared across pillars. “Strongest pillar” only shows where a mandal ranks highest compared "
+            "to other mandals. For an overall picture, use the "
+            + map_link("nhigh", "“How many pillars are strong” map") + ". The same holds for “Strongest business "
+            "area”: see the " + map_link("bnhigh", "“How many business areas are strong” map") + ".",
+            unsafe_allow_html=True)
         st.markdown("#### Caveats by layer")
         for k, v in LAYERS.items():
             with st.expander(v["name"]):
